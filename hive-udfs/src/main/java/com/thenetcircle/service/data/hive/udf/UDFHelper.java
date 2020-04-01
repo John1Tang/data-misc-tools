@@ -44,7 +44,6 @@ import static java.lang.String.format;
 import static org.apache.hadoop.hive.ql.exec.GroupByOperator.*;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters.Converter;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters.getConverter;
-import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils.copyToStandardJavaObject;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.getPrimitiveWritableObjectInspector;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils.*;
@@ -54,13 +53,13 @@ import static org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils.getTypeInfoFr
 
 public class UDFHelper {
     public static Set<Class> NUMERIC_CLZZ = new HashSet<>(Arrays.asList(
-        Boolean.class,
-        Byte.class,
-        Short.class,
-        Integer.class,
-        Long.class,
-        Float.class,
-        Double.class
+            Boolean.class,
+            Byte.class,
+            Short.class,
+            Integer.class,
+            Long.class,
+            Float.class,
+            Double.class
     ));
 
     public static int getSize(Object obj) {
@@ -78,9 +77,9 @@ public class UDFHelper {
     }
 
     public static PrimitiveTypeEntry getTypeFor(Class<?> retType)
-        throws UDFArgumentException {
+            throws UDFArgumentException {
         PrimitiveTypeEntry entry =
-            getTypeEntryFromPrimitiveJavaType(retType);
+                getTypeEntryFromPrimitiveJavaType(retType);
 
         if (entry == null) {
             entry = getTypeEntryFromPrimitiveJavaClass(retType);
@@ -113,8 +112,8 @@ public class UDFHelper {
         for (Object entry : eachMap.entrySet()) {
             Map.Entry kv = (Map.Entry) entry;
             retInsp.put(map,
-                copyToStandardJavaObject(kv.getKey(), mapInsp.getMapKeyObjectInspector()),
-                copyToStandardJavaObject(kv.getValue(), mapInsp.getMapValueObjectInspector())
+                    ObjectInspectorUtils.copyToStandardJavaObject(kv.getKey(), mapInsp.getMapKeyObjectInspector()),
+                    ObjectInspectorUtils.copyToStandardJavaObject(kv.getValue(), mapInsp.getMapValueObjectInspector())
             );
         }
         return map;
@@ -126,16 +125,16 @@ public class UDFHelper {
                                      int max) throws UDFArgumentLengthException {
         if (args.length >= min && args.length <= max) return;
         throw new UDFArgumentLengthException(
-            format("%s requires %d..%d argument(s), got %d", funcName, min, max, args.length)
+                format("%s requires %d..%d argument(s), got %d", funcName, min, max, args.length)
         );
     }
 
     public static void checkArgPrimitive(String funcName, ObjectInspector[] arguments, int i)
-        throws UDFArgumentTypeException {
+            throws UDFArgumentTypeException {
         ObjectInspector.Category oiCat = arguments[i].getCategory();
         if (oiCat != ObjectInspector.Category.PRIMITIVE) {
             throw new UDFArgumentTypeException(i, funcName + " only takes primitive types as "
-                + getArgOrder(i) + " argument, got " + oiCat);
+                    + getArgOrder(i) + " argument, got " + oiCat);
         }
     }
 
@@ -152,7 +151,7 @@ public class UDFHelper {
     }
 
     private static final String[] ORDINAL_SUFFIXES = new String[]{"th", "st", "nd", "rd", "th",
-        "th", "th", "th", "th", "th"};
+            "th", "th", "th", "th", "th"};
 
     public static void checkArgGroups(String funcName,
                                       ObjectInspector[] args,
@@ -192,8 +191,8 @@ public class UDFHelper {
         PrimitiveObjectInspector.PrimitiveCategory inputType = inOi.getPrimitiveCategory();
 
         Converter converter = getConverter(
-            arguments[i],
-            PrimitiveObjectInspectorFactory.writableStringObjectInspector);
+                arguments[i],
+                PrimitiveObjectInspectorFactory.writableStringObjectInspector);
         converters[i] = converter;
         inputTypes[i] = inputType;
     }
@@ -238,7 +237,7 @@ public class UDFHelper {
                 break;
             default:
                 throw new UDFArgumentTypeException(0, funcName
-                    + " only takes STRING_GROUP and DATE_GROUP types, got " + inputType);
+                        + " only takes STRING_GROUP and DATE_GROUP types, got " + inputType);
         }
         return date;
     }
@@ -394,7 +393,7 @@ public class UDFHelper {
 
             PrimitiveMethodBridge mb = new PrimitiveMethodBridge();
             mb.retObjInsp = ObjectInspectorFactory.getStandardStructObjectInspector(Arrays.asList("ret"),
-                Arrays.asList(retType2ObjInsp(md)));
+                    Arrays.asList(retType2ObjInsp(md)));
 
             mb.clz = clz;
             mb.method = md;
@@ -412,9 +411,9 @@ public class UDFHelper {
                         checkPrimitiveParamAndArgOI(paramType.getComponentType(), argObjInsp, i1);
                     }
                     mb.objInspAndConverters.add(new ImmutablePair(argObjInsp,
-                        getConverter(argObjInsp,
-                            getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(paramType.getComponentType()).primitiveCategory)
-                        )
+                            getConverter(argObjInsp,
+                                    getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(paramType.getComponentType()).primitiveCategory)
+                            )
                     ));
                     break;
                 }
@@ -423,9 +422,9 @@ public class UDFHelper {
                     checkPrimitiveParamAndArgOI(paramType, argObjInsp, i);
 
                     mb.objInspAndConverters.add(new ImmutablePair(argObjInsp,
-                        getConverter(argObjInsp,
-                            getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(paramType).primitiveCategory)
-                        )
+                            getConverter(argObjInsp,
+                                    getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(paramType).primitiveCategory)
+                            )
                     ));
 
                 } else if (ObjectInspector.Category.LIST == argObjInsp.getCategory()) {
@@ -438,19 +437,19 @@ public class UDFHelper {
                     if (param.isVarArgs()) {
                         checkPrimitiveParamAndArgOI(paramType, elementInsp, i);
                         mb.objInspAndConverters.add(new ImmutablePair(argObjInsp,
-                            getConverter(argObjInsp,
-                                ObjectInspectorFactory.getStandardListObjectInspector(
-                                    getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(paramType).primitiveCategory))
-                            )));
+                                getConverter(argObjInsp,
+                                        ObjectInspectorFactory.getStandardListObjectInspector(
+                                                getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(paramType).primitiveCategory))
+                                )));
                     } else if (paramType.isArray()) {
                         Class<?> compType = paramType.getComponentType();
                         checkPrimitiveParamAndArgOI(compType, elementInsp, i);
 
                         mb.objInspAndConverters.add(new ImmutablePair(argObjInsp,
-                            getConverter(argObjInsp,
-                                ObjectInspectorFactory.getStandardListObjectInspector(
-                                    getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(compType).primitiveCategory))
-                            )));
+                                getConverter(argObjInsp,
+                                        ObjectInspectorFactory.getStandardListObjectInspector(
+                                                getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(compType).primitiveCategory))
+                                )));
                     }
                     //TODO list/set/map?
 
@@ -473,7 +472,7 @@ public class UDFHelper {
 
         if (clz.isArray()) {
             return ObjectInspectorFactory.getStandardListObjectInspector(
-                getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(clz.getComponentType()).primitiveCategory));
+                    getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(clz.getComponentType()).primitiveCategory));
         }
 
         return null;
@@ -489,7 +488,7 @@ public class UDFHelper {
 
         if (clz.isArray()) {
             return ObjectInspectorFactory.getStandardListObjectInspector(
-                getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(clz.getComponentType()).primitiveCategory));
+                    getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(clz.getComponentType()).primitiveCategory));
         }
 
         if (Collection.class.isAssignableFrom(clz)) {
@@ -518,7 +517,7 @@ public class UDFHelper {
 
                 Type keyType = actualTypeArgs[0];
                 Type valType = actualTypeArgs[0];
-                if (!(keyType instanceof Class)) {
+                if (!(keyType instanceof Class && valType instanceof Class)) {
                     return null;
                 }
                 Class keyClz = (Class) keyType;
@@ -559,7 +558,7 @@ public class UDFHelper {
 
             if (Map.class == (Class) pt.getRawType() || HashMap.class == (Class) pt.getRawType()) {
                 return getMapTypeInfo(typeToTypeInfo(actualTypeArguments[0]),
-                    typeToTypeInfo(actualTypeArguments[1]));
+                        typeToTypeInfo(actualTypeArguments[1]));
             }
 
             t = pt.getRawType();
@@ -580,30 +579,30 @@ public class UDFHelper {
         }
         if (PrimitiveObjectInspectorUtils.isPrimitiveJavaType(c)) {
             return getTypeInfoFromObjectInspector(
-                getPrimitiveJavaObjectInspector(
-                    getTypeEntryFromPrimitiveJavaType(c).primitiveCategory));
+                    getPrimitiveJavaObjectInspector(
+                            getTypeEntryFromPrimitiveJavaType(c).primitiveCategory));
         }
         if (PrimitiveObjectInspectorUtils.isPrimitiveJavaClass(c)) {
             return getTypeInfoFromObjectInspector(
-                getPrimitiveJavaObjectInspector(
-                    getTypeEntryFromPrimitiveJavaClass(c).primitiveCategory));
+                    getPrimitiveJavaObjectInspector(
+                            getTypeEntryFromPrimitiveJavaClass(c).primitiveCategory));
         }
         if (PrimitiveObjectInspectorUtils.isPrimitiveWritableClass(c)) {
             return getTypeInfoFromObjectInspector(
-                getPrimitiveWritableObjectInspector(
-                    getTypeEntryFromPrimitiveWritableClass(c).primitiveCategory));
+                    getPrimitiveWritableObjectInspector(
+                            getTypeEntryFromPrimitiveWritableClass(c).primitiveCategory));
         }
 
         Field[] fields = ObjectInspectorUtils.getDeclaredNonStaticFields(c);
 
         List<String> fieldNameList = Arrays.stream(fields)
-            .map(Field::getName)
-            .collect(Collectors.toList());
+                .map(Field::getName)
+                .collect(Collectors.toList());
 
         List<TypeInfo> tiList = Arrays.stream(fields)
-            .map(Field::getType)
-            .map(UDFHelper::typeToTypeInfo)
-            .collect(Collectors.toList());
+                .map(Field::getType)
+                .map(UDFHelper::typeToTypeInfo)
+                .collect(Collectors.toList());
 
         return getStructTypeInfo(fieldNameList, tiList);
     }
@@ -664,4 +663,82 @@ public class UDFHelper {
             super(structFieldNames, structFieldObjectInspectors);
         }
     }
+
+
+    public static Map<String, Object> structToMap(StructObjectInspector structInsp, Object struct) {
+        Map<String, Object> reMap = new HashMap<>();
+
+        List<Object> datas = structInsp.getStructFieldsDataAsList(struct);
+
+        for (StructField sf : structInsp.getAllStructFieldRefs()) {
+            Object data = datas.get(sf.getFieldID());
+            ObjectInspector fieldInsp = sf.getFieldObjectInspector();
+            String key = sf.getFieldName();
+            if (fieldInsp.getCategory() != ObjectInspector.Category.STRUCT) {
+                reMap.put(key, normaliz(fieldInsp, data));
+            } else {
+                reMap.put(key, structToMap((StructObjectInspector) fieldInsp, data));
+            }
+        }
+
+        return reMap;
+    }
+
+    public static Object normaliz(ObjectInspector objInsp, Object data) {
+        if (objInsp == null || data == null) return null;
+
+        switch (objInsp.getCategory()) {
+            case PRIMITIVE:
+                PrimitiveObjectInspector primitiveInsp = (PrimitiveObjectInspector) objInsp;
+                switch (primitiveInsp.getPrimitiveCategory()) {
+                    case VARCHAR:
+                    case CHAR:
+                    case STRING:
+                    case BOOLEAN:
+                    case UNKNOWN:
+                        return PrimitiveObjectInspectorUtils.getString(data, primitiveInsp);
+                    case INT:
+                    case BYTE:
+                    case LONG:
+                    case DECIMAL:
+                    case FLOAT:
+                    case DOUBLE:
+                        return PrimitiveObjectInspectorUtils.getDouble(data, primitiveInsp);
+                    case TIMESTAMP:
+                        return PrimitiveObjectInspectorUtils.getDate(data, primitiveInsp);
+                    default:
+                        return String.valueOf(primitiveInsp.getPrimitiveJavaObject(data));
+                }
+            case LIST:
+                ListObjectInspector listInsp = (ListObjectInspector) objInsp;
+                List<?> dataList = listInsp.getList(data);
+                List<Object> resultList = new ArrayList<>(dataList.size());
+                ObjectInspector eleInsp = listInsp.getListElementObjectInspector();
+                for (Object _data : dataList) {
+                    Object normalized = normaliz(eleInsp, _data);
+                    if (normalized != null) {
+                        resultList.add(normalized);
+                    }
+                }
+                return resultList;
+            case MAP:
+                MapObjectInspector mapInsp = (MapObjectInspector) objInsp;
+                PrimitiveObjectInspector keyInsp = (PrimitiveObjectInspector) mapInsp.getMapKeyObjectInspector();
+                ObjectInspector valInsp = mapInsp.getMapValueObjectInspector();
+                Map<?, ?> map = mapInsp.getMap(data);
+                Map<String, Object> resultMap = new HashMap<>();
+                for (Map.Entry en : map.entrySet()) {
+                    resultMap.put(PrimitiveObjectInspectorUtils.getString(en.getKey(), keyInsp),
+                            normaliz(valInsp, en.getValue()));
+                }
+                return resultMap;
+            case STRUCT:
+                return structToMap((StructObjectInspector) objInsp, data);
+            case UNION:
+                //UNION type is not completely supported by hive
+            default:
+                return null;
+        }
+    }
+
 }
