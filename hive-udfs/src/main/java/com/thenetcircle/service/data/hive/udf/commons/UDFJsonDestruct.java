@@ -54,7 +54,9 @@ public class UDFJsonDestruct extends GenericUDF {
     @Override
     public Object evaluate(DeferredObject[] args) throws HiveException {
         DeferredObject arg0 = args[0];
-        if (arg0 == null || this.strInsp == null) return NULL_RESULT;
+        if (arg0 == null || this.strInsp == null) {
+            return NULL_RESULT;
+        }
 
         String jsonStr = this.strInsp.getPrimitiveJavaObject(arg0.get());
         if (StringUtils.isBlank(jsonStr)) {
