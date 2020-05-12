@@ -30,7 +30,7 @@ import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveO
 
 @Description(name = "http_post",
         value = "_FUNC_(url, timeout, headers, content) - send post to url with headers in timeout")
-@UDFType(deterministic = false, stateful = false, distinctLike = true, impliesOrder = true)
+@UDFType(deterministic = false, stateful = false, distinctLike = true/*, impliesOrder = true*/)
 public class UDFHttpPost extends GenericUDF {
 
     private transient StringObjectInspector urlInsp;
