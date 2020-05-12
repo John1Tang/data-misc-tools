@@ -42,7 +42,7 @@ public class UDFHttpPost extends GenericUDF {
 
     @Override
     public ObjectInspector initialize(ObjectInspector[] args) throws UDFArgumentException {
-        checkArgsSize(args, 1, 3);
+        checkArgsSize(args, 1, 4);
         checkArgPrimitive(args, 0);
         checkArgGroups(args, 0, inputTypes, STRING_GROUP);
 
