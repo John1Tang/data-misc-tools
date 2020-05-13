@@ -89,7 +89,7 @@ public class UDFHttpPost extends GenericUDF {
     @Override
     public Object evaluate(DeferredObject[] args) throws HiveException {
         DeferredObject arg0 = args[0];
-        String urlStr = this.urlInsp.getPrimitiveJavaObject(arg0);
+        String urlStr = this.urlInsp.getPrimitiveJavaObject(arg0.get());
         if (StringUtils.isBlank(urlStr)) {
             return StringUtils.EMPTY;
         }
@@ -98,7 +98,7 @@ public class UDFHttpPost extends GenericUDF {
         post.setConfig(rc);
 
         if (args.length > 2 && args[2] != null && headersInsp != null) {
-            Map<?, ?> headersMap = headersInsp.getMap(args[2]);
+            Map<?, ?> headersMap = headersInsp.getMap(args[2].get());
             post.setHeaders(map2Headers(headersMap));
         }
 

@@ -40,7 +40,7 @@ public class UDTFHttpPost extends UDTFExt {
     private transient PrimitiveObjectInspector.PrimitiveCategory[] inputTypes = new PrimitiveObjectInspector.PrimitiveCategory[4];
 
     public StructObjectInspector _initialize(ObjectInspector[] args) throws UDFArgumentException {
-        checkArgsSize(NAME, args, 1, 3);
+        checkArgsSize(NAME, args, 1, 4);
         checkArgPrimitive(NAME, args, 0);
         checkArgGroups(NAME, args, 0, inputTypes, STRING_GROUP);
 
