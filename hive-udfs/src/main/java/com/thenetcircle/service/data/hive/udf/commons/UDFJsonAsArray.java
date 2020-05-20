@@ -72,12 +72,12 @@ public class UDFJsonAsArray extends UDTFExt {
             return null;
         }
         try {
-            JSONArray extractObject = new JSONArray(_args);
+            JSONArray extractObject = new JSONArray(_args[start + 0].toString());
             List<String> result = new ArrayList<>();
             for (int ii = 0; ii < extractObject.length(); ++ii) {
                 result.add(extractObject.get(ii).toString());
             }
-            return new Object[]{result.toArray()};
+            return new Object[]{result};
         } catch (JSONException | NumberFormatException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             return new Object[]{-1, null, e.toString()};
