@@ -10,7 +10,6 @@ import org.apache.hadoop.io.Text;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -23,16 +22,16 @@ import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveO
  * @author: john
  * @created: 2020/05/20 16:54
  */
-@Description(name = "json_array",
+@Description(name = "t_json_array",
         value = "_FUNC_(array_string) - Convert a string of a JSON-encoded array to a Hive array of strings.")
 public class UDFJsonAsArray extends UDTFExt {
 
-    public static final String NAME = "json_array";
+    public static final String NAME = "t_json_array";
 
     private transient StringObjectInspector strInsp;
 
     public static final List<String> RESULT_FIELDS = Arrays.asList("json_obj");
-    public static final List<ObjectInspector> RESULT_FIELD_INSPECTORS = Arrays.asList(ObjectInspectorFactory.getStandardListObjectInspector(javaStringObjectInspector));
+    public static final List<ObjectInspector> RESULT_FIELD_INSPECTORS = Arrays.asList(javaStringObjectInspector);
 
     public static final StandardStructObjectInspector RESULT_TYPE = ObjectInspectorFactory.getStandardStructObjectInspector(
             RESULT_FIELDS,
@@ -74,12 +73,11 @@ public class UDFJsonAsArray extends UDTFExt {
         }
         try {
             JSONArray extractObject = new JSONArray(_args[start + 0].toString());
-            List<Text> result = new ArrayList<>();
-            for (int ii = 0; ii < extractObject.length(); ++ii) {
-                result.add(new Text(extractObject.get(ii).toString()));
+            Object[] res = new Object[extractObject.length()];
+            for (int ii = 0; ii < res.length; ++ii) {
+                res[ii] = new Text(extractObject.get(ii).toString());
             }
-            //FIXME still cannot return as struct<array<string>>
-            return new Object[]{result};
+            return res;
         } catch (JSONException | NumberFormatException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             return new Object[]{-1, null, e.toString()};
@@ -89,6 +87,15 @@ public class UDFJsonAsArray extends UDTFExt {
     @Override
     public void close() throws HiveException {
 
+    }
+
+    @Override
+    public void process(Object[] args) throws HiveException {
+        Object[] objects =  evaluate(args, 1);
+        String ctx = args[0].toString();
+        for (Object object : objects) {
+            forward(new Object[]{object, new Text(ctx)});
+        }
     }
 
 }
