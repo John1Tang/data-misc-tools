@@ -20,7 +20,7 @@ import java.util.Properties;
 public class TncJdbcOutputFmt implements OutputFormat<NullWritable, MapWritable>,
     HiveOutputFormat<NullWritable, MapWritable> {
 
-    private static final Logger log = LoggerFactory.getLogger(JdbcInputFormat.class);
+    private static final Logger log = LoggerFactory.getLogger(TncJdbcOutputFmt.class);
 
     @Override
     public RecordWriter getHiveRecordWriter(JobConf jc,
