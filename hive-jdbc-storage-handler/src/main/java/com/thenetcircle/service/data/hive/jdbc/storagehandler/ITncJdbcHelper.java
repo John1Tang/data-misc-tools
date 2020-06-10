@@ -4,6 +4,7 @@ import org.apache.commons.dbcp.BasicDataSourceFactory;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.type.HiveBaseChar;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -163,5 +164,12 @@ public interface ITncJdbcHelper {
             default:
                 return format("%s {LIMIT %d OFFSET %d}", sql, limit, offset);
         }
+    }
+
+    static Object toJDBCCompatible(Object obj) {
+        if (obj instanceof HiveBaseChar) {
+            return ((HiveBaseChar) obj).getValue();
+        }
+        return obj;
     }
 }

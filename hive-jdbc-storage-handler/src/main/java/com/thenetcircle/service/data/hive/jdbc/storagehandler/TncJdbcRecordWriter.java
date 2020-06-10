@@ -1,6 +1,5 @@
 package com.thenetcircle.service.data.hive.jdbc.storagehandler;
 
-import org.apache.commons.dbcp.BasicDataSourceFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,7 +36,7 @@ public class TncJdbcRecordWriter implements RecordWriter {
     protected int totalCount = 0;
     protected String tableName;
     protected JdbcColumnInfo[] columnInfos;
-    protected Map<String, Text> nameToText = new HashMap<>();
+    protected Map<String, Text> nameToText = new HashMap();
     protected int fetchSize = 1000;
 
 
@@ -53,7 +52,7 @@ public class TncJdbcRecordWriter implements RecordWriter {
     protected void init() throws IOException {
         if (dbcpDataSource == null) {
             try {
-                dbcpDataSource = BasicDataSourceFactory.createDataSource(getConnPoolProps(conf));
+                dbcpDataSource = getDataSource(conf);
             } catch (Exception e) {
                 log.error("failed to create datasource", e);
                 e.printStackTrace(SessionState.get().err);
@@ -64,7 +63,12 @@ public class TncJdbcRecordWriter implements RecordWriter {
             if (conn == null || conn.isClosed() || conn.isReadOnly()) {
                 if (conn != null) conn.close();
                 conn = dbcpDataSource.getConnection();
+                boolean autoCommit = conf.getBoolean("hive.sql.auto.commit", true);
+                log.info(format("\n\t set autoCommit to %d", autoCommit));
                 conn.setAutoCommit(false);
+                int txLevel = conf.getInt("hive.sql.transaction.level", conn.getTransactionIsolation());
+                log.info(format("\n\t set txlevel to %d", txLevel));
+                conn.setTransactionIsolation(txLevel);
             }
         } catch (Exception e) {
             log.error("failed to create connection", e);
@@ -95,9 +99,10 @@ public class TncJdbcRecordWriter implements RecordWriter {
         MapWritable mw = (MapWritable) w;
         try {
             for (JdbcColumnInfo jci : columnInfos) {
-                Writable wv = mw.get(nameToText.get(jci.name));//ugly
+                //ugly
+                Writable wv = mw.get(nameToText.get(jci.name));
                 Object val = HiveJdbcBridgeUtils.getValue(wv);
-                ps.setObject(jci.index, val);
+                ps.setObject(jci.index, toJDBCCompatible(val));
             }
             ps.addBatch();
             totalCount++;
@@ -108,27 +113,30 @@ public class TncJdbcRecordWriter implements RecordWriter {
                 sendBatch();
             }
         } catch (SQLException e) {
-            log.error(format("failed to set \n\t %s ", w));
-            throw new IOException(e);
+            log.error(format("failed to set \n\t %s\n\t %s",  ps, w), e);
+            log.error(format("failed to set \n\t %s", w), e.getNextException());
         }
     }
 
     protected void sendBatch() throws SQLException {
         int[] reCnts = ps.executeBatch();
         log.info(format("inserted %d into table %s in batch", ps.getUpdateCount(), tableName));
-        conn.commit();
+        if (!conn.getAutoCommit())
+            conn.commit();
     }
 
     protected void initInsertStatement() throws IOException {
         String sql = "unprepared";
         try {
             if (ps != null && !ps.isClosed()) return;
-            String[] columnNames = Stream.of(columnInfos).map(ci -> ci.name).toArray(String[]::new);
-            sql = insertRowSql(tableName, columnNames);
+            sql = this.conf.get("hive.sql.write.sql", sql);
+            if ("unprepared".equals(sql)) {
+                String[] columnNames = Stream.of(columnInfos).map(ci -> ci.name).toArray(String[]::new);
+                sql = insertRowSql(tableName, columnNames);
+            }
             ps = conn.prepareStatement(sql);
         } catch (SQLException e) {
             log.error("failed to prepare statement with sql:\n\t" + sql, e);
-            e.printStackTrace(SessionState.get().err);
             throw new IOException(e);
         }
     }
@@ -139,11 +147,11 @@ public class TncJdbcRecordWriter implements RecordWriter {
             if (counter > 0)
                 sendBatch();
             counter = 0;
-            if (abort)
+            if (abort && !conn.getAutoCommit())
                 conn.rollback();
         } catch (SQLException e) {
             log.error("failed to close connection", e);
-            e.printStackTrace(SessionState.get().err);
+            log.error("failed to close \n\t %s", e.getNextException());
             throw new IOException(e);
         } finally {
             counter = 0;
