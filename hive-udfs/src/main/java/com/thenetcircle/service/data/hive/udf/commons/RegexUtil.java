@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,7 +82,7 @@ public class RegexUtil {
     public List<String> multiMatchResults(String strInput, String expre) {
         if (!StringUtils.isNotEmpty(strInput) || !StringUtils.isNotEmpty(expre)) {
             log.error("input :" + strInput + "\n regex:" + expre);
-            return null;
+            return Collections.emptyList();
         }
 
         if (!expre.equals(lastRegex) || p == null){
@@ -107,6 +108,6 @@ public class RegexUtil {
                 break;
             }
         }
-        return CollectionUtils.isEmpty(listVal) ? null : listVal;
+        return CollectionUtils.isEmpty(listVal) ? Collections.emptyList() : listVal;
     }
 }
