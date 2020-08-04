@@ -10,7 +10,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgsSize;
 
-public abstract class UDTFExt extends GenericUDTF {
+public abstract class UDTFSelfForwardBase extends GenericUDTF {
     protected String funcName = null;
 
     @Override
@@ -28,11 +28,8 @@ public abstract class UDTFExt extends GenericUDTF {
 
     public abstract StructObjectInspector _initialize(ObjectInspector[] argOIs) throws UDFArgumentException;
 
-    public abstract Object[] evaluate(Object[] _args, int start) throws HiveException;
-
-    @Override
-    public void process(Object[] args) throws HiveException {
-        Object[] results = ArrayUtils.add(evaluate(args, 1), args[0]);
+    public void forwardAction(Object[] rest, Object first) throws HiveException {
+        Object[] results = ArrayUtils.add(rest, first);
         forward(results);
     }
 }

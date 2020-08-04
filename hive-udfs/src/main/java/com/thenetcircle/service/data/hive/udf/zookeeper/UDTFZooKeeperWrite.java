@@ -69,6 +69,7 @@ public class UDTFZooKeeperWrite extends UDTFExt {
 
     private transient ZooKeeper zk = null;
 
+    @Override
     public Object[] evaluate(Object[] args, int start) throws HiveException {
         Object arg0 = args[start + 0];
         if (arg0 == null) {
