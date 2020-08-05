@@ -2,9 +2,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.google.common.collect.Lists;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
-import com.thenetcircle.service.data.hive.udf.commons.UDTFExt;
 import com.thenetcircle.service.data.hive.udf.commons.UDTFSelfForwardBase;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
@@ -17,28 +15,30 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableVoidObjectInspector;
 import org.apache.http.Header;
-import org.apache.http.client.HttpClient;
+import org.apache.http.HeaderElement;
+import org.apache.http.HeaderElementIterator;
 import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.FutureRequestExecutionService;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpRequestFutureTask;
+import org.apache.http.message.BasicHeaderElementIterator;
+import org.apache.http.protocol.HTTP;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.*;
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils.PrimitiveGrouping.NUMERIC_GROUP;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils.PrimitiveGrouping.STRING_GROUP;
 
 
@@ -133,9 +133,6 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         if (StringUtils.isBlank(urlStr)) {
             forwardAction(runtimeErr("url is blank"), args[0]);
         }
-        
-        //pageable
-        int taskNum = limit % pageSize == 0 ? limit / pageSize : (limit / pageSize + 1);
 
 
         HttpPost post = new HttpPost();
@@ -162,9 +159,12 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         FutureRequestExecutionService futureRequestExecutionService =
                 new FutureRequestExecutionService(hc, threadPoolExecutor);
 
-        // TODO replace with real url
-        List<String> urls = Arrays.asList("http://www.bing.com", "http://www.baidu.com", "http://www.qq.com");
-        List<HttpRequestFutureTask<Object[]>> reqTasks = Lists.newArrayListWithCapacity(3);
+        List<String> urls = Lists.newLinkedList();
+        //pageable
+        int taskNum = limit % pageSize == 0 ? limit / pageSize : (limit / pageSize + 1);
+        for (int i = 0; i < taskNum; i += pageSize) {
+            urls.add(String.format(urlStr, i, pageSize));
+        }
         for (String url : urls) {
             post.setURI(URI.create(url));
             HttpRequestFutureTask<Object[]> task = futureRequestExecutionService.execute(
@@ -179,27 +179,38 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
                         @Override
                         public void failed(Exception ex) {
-                            resultQueue.offer(new Object[]{
-                                    -1, null, ex.getMessage()
-                            });
+                            resultQueue.offer(runtimeErr(ex.getMessage()));
                         }
                     });
-            reqTasks.add(task);
         }
-
-        while(threadPoolExecutor.getTaskCount() > 0){
-            Object[] pollResults = resultQueue.poll();
+        /*&& !resultQueue.isEmpty()*/
+        while(threadPoolExecutor.getTaskCount() > 0 ){
+            Object[] pollResults = Optional.ofNullable(resultQueue.poll())
+                                            .orElse(runtimeErr("nothing in queue yet"));
             forwardAction(pollResults, args[0]);
         }
 
     }
 
 
-
-    private transient CloseableHttpClient hc = HttpClientBuilder.create().build();
-
-
-
+    private transient CloseableHttpClient hc =
+        HttpClientBuilder
+            .create()
+            .setKeepAliveStrategy((response, context) -> {
+                HeaderElementIterator it = new BasicHeaderElementIterator
+                        (response.headerIterator(HTTP.CONN_KEEP_ALIVE));
+                while (it.hasNext()) {
+                    HeaderElement he = it.nextElement();
+                    String param = he.getName();
+                    String value = he.getValue();
+                    if (value != null && param.equalsIgnoreCase
+                            ("timeout")) {
+                        return Long.parseLong(value) * 1000;
+                    }
+                }
+                return 60 * 1000;
+            })
+            .build();
 
 
     @Override
