@@ -279,7 +279,9 @@ public class UDFHelper {
     }
 
     public static StructObjectInspector addContextToStructInsp(StructObjectInspector soip, ObjectInspector oip) {
-        if (soip == null || oip == null) return null;
+        if (soip == null || oip == null) {
+            return null;
+        }
 
         List<? extends StructField> fieldRefs = soip.getAllStructFieldRefs();
         List<String> fieldNames = fieldRefs.stream().map(StructField::getFieldName).collect(Collectors.toList());

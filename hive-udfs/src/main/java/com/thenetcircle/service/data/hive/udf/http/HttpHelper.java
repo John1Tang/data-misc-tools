@@ -8,6 +8,8 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
 import org.apache.http.Header;
+import org.apache.http.HeaderElement;
+import org.apache.http.HeaderElementIterator;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -19,7 +21,10 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
+import org.apache.http.message.BasicHeaderElementIterator;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
@@ -125,6 +130,26 @@ public class HttpHelper {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
         }
         return post;
+    }
+
+    public static CloseableHttpClient createHc() {
+        return HttpClientBuilder
+                .create()
+                .setKeepAliveStrategy((response, context) -> {
+                    HeaderElementIterator it = new BasicHeaderElementIterator
+                            (response.headerIterator(HTTP.CONN_KEEP_ALIVE));
+                    while (it.hasNext()) {
+                        HeaderElement he = it.nextElement();
+                        String param = he.getName();
+                        String value = he.getValue();
+                        if (value != null && param.equalsIgnoreCase
+                                ("timeout")) {
+                            return Long.parseLong(value) * 1000;
+                        }
+                    }
+                    return 60 * 1000;
+                })
+                .build();
     }
 
 

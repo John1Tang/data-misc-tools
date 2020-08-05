@@ -3,6 +3,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 import com.google.common.collect.Lists;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
 import com.thenetcircle.service.data.hive.udf.commons.UDTFSelfForwardBase;
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
@@ -15,20 +16,18 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableVoidObjectInspector;
 import org.apache.http.Header;
-import org.apache.http.HeaderElement;
-import org.apache.http.HeaderElementIterator;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.FutureRequestExecutionService;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpRequestFutureTask;
-import org.apache.http.message.BasicHeaderElementIterator;
-import org.apache.http.protocol.HTTP;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,15 +38,20 @@ import java.util.concurrent.TimeUnit;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.*;
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils.PrimitiveGrouping.STRING_GROUP;
 
 
+/**
+ * @author john
+ */
 @Description(name = UDTFAsyncHttpPost.NAME,
     value = "_FUNC_(url, offset, limit, timeout, headers, content) - send post to url with headers in timeout")
 public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     public static final String NAME = "async_http_post";
 
     private transient StringObjectInspector urlInsp;
+
+    private static Logger log = LoggerFactory.getLogger(UDTFAsyncHttpPost.class);
+
 
     private int offset;
     private int limit;
@@ -63,9 +67,10 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     private final int coreNum = Runtime.getRuntime().availableProcessors();
 
     private transient ThreadPoolExecutor threadPoolExecutor;
-    private final int pageSize = 200;
+    private int pageSize = 1;
 
     private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
+    private HCCallback hcCallback;
 
     @Override
     public StructObjectInspector _initialize(ObjectInspector[] args) throws UDFArgumentException {
@@ -76,18 +81,18 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
         if (args.length > 1) {
             checkArgPrimitive(NAME, args, 1);
-            timeout = Optional.ofNullable(getConstantIntValue(NAME, args, 1)).orElse(0);
-            rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
+            offset = Optional.ofNullable(getConstantIntValue(NAME, args, 1)).orElse(0);
         }
-
+        //TODO reset order of offset, limit
         if (args.length > 2) {
             checkArgPrimitive(NAME, args, 2);
-            offset = Optional.ofNullable(getConstantIntValue(NAME, args, 2)).orElse(0);
+            limit = Optional.ofNullable(getConstantIntValue(NAME, args, 2)).orElse(10000);
         }
 
         if (args.length > 3) {
             checkArgPrimitive(NAME, args, 3);
-            limit = Optional.ofNullable(getConstantIntValue(NAME, args, 3)).orElse(10000);
+            timeout = Optional.ofNullable(getConstantIntValue(NAME, args, 3)).orElse(0);
+            rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
         }
 
         //headers
@@ -108,10 +113,10 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         }
 
         if (args.length > 5) {
-            checkArgGroups(NAME, args, 5, inputTypes, STRING_GROUP);
+            checkArgPrimitive(NAME, args, 5);
             ObjectInspector contentObj = args[5];
-            if (!(args[0] instanceof StringObjectInspector)) {
-                throw new UDFArgumentTypeException(0, "content must be string");
+            if (!(args[5] instanceof StringObjectInspector)) {
+                throw new UDFArgumentTypeException(5, "content must be string");
             }
             this.contentInsp = (StringObjectInspector) contentObj;
         }
@@ -121,6 +126,24 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                     new LinkedBlockingDeque<>(200), new NamedThreadFactory("async_http_post"));
         }
 
+        hcCallback = new HCCallback() {
+            @Override
+            public void completed(Object[] result) {
+                log.info(Thread.currentThread().getName() + Arrays.toString(result));
+                resultQueue.offer(result);
+            }
+
+            @Override
+            public void failed(Exception ex) {
+                resultQueue.offer(runtimeErr(ex.getMessage()));
+            }
+
+            @Override
+            public void cancelled() {
+                resultQueue.offer(runtimeErr("task cancelled"));
+            }
+        };
+
         return RESULT_TYPE;
     }
 
@@ -128,6 +151,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     @Override
     public void process(Object[] args) throws HiveException {
 
+        log.info("--- start process ---");
         int start = 1;
         String urlStr = this.urlInsp.getPrimitiveJavaObject(args[start]);
         if (StringUtils.isBlank(urlStr)) {
@@ -140,7 +164,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         Header[] headers;
 
         if (args.length > start + 4 && args[start + 4] != null && headersInsp != null) {
-            Map<?, ?> headersMap = headersInsp.getMap(args[start + 2]);
+            Map<?, ?> headersMap = headersInsp.getMap(args[start + 4]);
             headers = map2Headers(headersMap);
             post.setHeaders(headers);
         }
@@ -155,6 +179,9 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
             }
         }
 
+        if (null == hc ) {
+            hc = createHc();
+        }
 
         FutureRequestExecutionService futureRequestExecutionService =
                 new FutureRequestExecutionService(hc, threadPoolExecutor);
@@ -162,55 +189,36 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         List<String> urls = Lists.newLinkedList();
         //pageable
         int taskNum = limit % pageSize == 0 ? limit / pageSize : (limit / pageSize + 1);
-        for (int i = 0; i < taskNum; i += pageSize) {
+        for (int i = offset; i < taskNum; i += pageSize) {
             urls.add(String.format(urlStr, i, pageSize));
         }
         for (String url : urls) {
-            post.setURI(URI.create(url));
+            log.info("--- paging query url {} ---", url);
+            HttpPost postClone = (HttpPost) ObjectUtils.clone(post);
+            postClone.setURI(URI.create(url));
+
             HttpRequestFutureTask<Object[]> task = futureRequestExecutionService.execute(
-                    post,
+                    postClone,
                     hcContext,
                     respHandler,
-                    new HCCallback(){
-                        @Override
-                        public void completed(Object[] result) {
-                            resultQueue.offer(result);
-                        }
-
-                        @Override
-                        public void failed(Exception ex) {
-                            resultQueue.offer(runtimeErr(ex.getMessage()));
-                        }
-                    });
+                    hcCallback);
         }
         /*&& !resultQueue.isEmpty()*/
-        while(threadPoolExecutor.getTaskCount() > 0 ){
-            Object[] pollResults = Optional.ofNullable(resultQueue.poll())
-                                            .orElse(runtimeErr("nothing in queue yet"));
-            forwardAction(pollResults, args[0]);
+        while(threadPoolExecutor.getActiveCount() > 0 ){
+            while (!resultQueue.isEmpty()) {
+                Object[] pollResults = Optional.ofNullable(resultQueue.poll())
+                        .orElse(runtimeErr("nothing in queue yet"));
+                forwardAction(pollResults, args[0]);
+            }
         }
 
     }
 
 
     private transient CloseableHttpClient hc =
-        HttpClientBuilder
-            .create()
-            .setKeepAliveStrategy((response, context) -> {
-                HeaderElementIterator it = new BasicHeaderElementIterator
-                        (response.headerIterator(HTTP.CONN_KEEP_ALIVE));
-                while (it.hasNext()) {
-                    HeaderElement he = it.nextElement();
-                    String param = he.getName();
-                    String value = he.getValue();
-                    if (value != null && param.equalsIgnoreCase
-                            ("timeout")) {
-                        return Long.parseLong(value) * 1000;
-                    }
-                }
-                return 60 * 1000;
-            })
-            .build();
+            createHc();
+
+
 
 
     @Override
@@ -218,6 +226,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         HttpHelper.close(hc);
         hc = null;
         threadPoolExecutor.shutdown();
+        threadPoolExecutor = null;
     }
 
 }
