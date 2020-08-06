@@ -44,18 +44,19 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
  * @author john
  */
 @Description(name = UDTFAsyncHttpPost.NAME,
-    value = "_FUNC_(url, offset, limit, timeout, headers, content) - send post to url with headers in timeout")
+    value = "_FUNC_(url, timeout, headers, content, offset, limit, pageSize) - send post to url with headers in timeout")
 public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
-    public static final String NAME = "async_http_post";
 
-    private transient StringObjectInspector urlInsp;
+    public static final String NAME = "async_http_post";
 
     private static Logger log = LoggerFactory.getLogger(UDTFAsyncHttpPost.class);
 
-
+    private transient StringObjectInspector urlInsp;
     private int offset;
     private int limit;
     private int timeout;
+    private int pageSize;
+
     private transient RequestConfig rc;
 
     private transient MapObjectInspector headersInsp;
@@ -67,63 +68,36 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     private final int coreNum = Runtime.getRuntime().availableProcessors();
 
     private transient ThreadPoolExecutor threadPoolExecutor;
-    private int pageSize = 1;
+
 
     private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
     private HCCallback hcCallback;
 
+    private transient CloseableHttpClient hc = createHc();
+
     @Override
     public StructObjectInspector _initialize(ObjectInspector[] args) throws UDFArgumentException {
-        checkArgsSize(NAME, args, 6, 6);
+        checkArgsSize(NAME, args, 4,  7);
 
         checkArgPrimitive(NAME, args, 0);
         this.urlInsp = (StringObjectInspector) args[0];
 
-        if (args.length > 1) {
-            checkArgPrimitive(NAME, args, 1);
-            offset = Optional.ofNullable(getConstantIntValue(NAME, args, 1)).orElse(0);
-        }
-        //TODO reset order of offset, limit
-        if (args.length > 2) {
-            checkArgPrimitive(NAME, args, 2);
-            limit = Optional.ofNullable(getConstantIntValue(NAME, args, 2)).orElse(10000);
-        }
+        setTimeout(args, 1);
 
-        if (args.length > 3) {
-            checkArgPrimitive(NAME, args, 3);
-            timeout = Optional.ofNullable(getConstantIntValue(NAME, args, 3)).orElse(0);
-            rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
-        }
+        setReqHeader(args, 2);
 
-        //headers
-        if (args.length > 4) {
-            ObjectInspector headerInsp = args[4];
-            if (headerInsp instanceof WritableVoidObjectInspector) {
-                headersInsp = null;
-            } else {
-                if (!(headerInsp instanceof MapObjectInspector)) {
-                    throw new UDFArgumentTypeException(4, "header parameter must be map<string, object> or null:\n\t" + args[2]);
-                }
-                MapObjectInspector moi = (MapObjectInspector) headerInsp;
-                if (!(moi.getMapKeyObjectInspector() instanceof StringObjectInspector)) {
-                    throw new UDFArgumentTypeException(4, "header parameter must be map<string, object>");
-                }
-                headersInsp = moi;
-            }
-        }
+        setContent(args, 3);
 
-        if (args.length > 5) {
-            checkArgPrimitive(NAME, args, 5);
-            ObjectInspector contentObj = args[5];
-            if (!(args[5] instanceof StringObjectInspector)) {
-                throw new UDFArgumentTypeException(5, "content must be string");
-            }
-            this.contentInsp = (StringObjectInspector) contentObj;
-        }
+        setOffset(args, 4);
+
+        setLimit(args, 5);
+
+        setPageSize(args, 6);
+
 
         if(null == threadPoolExecutor){
             threadPoolExecutor = new ThreadPoolExecutor(coreNum, coreNum * 2, 8, TimeUnit.SECONDS,
-                    new LinkedBlockingDeque<>(200), new NamedThreadFactory("async_http_post"));
+                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory("async_http_post"));
         }
 
         hcCallback = new HCCallback() {
@@ -155,29 +129,10 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         int start = 1;
         String urlStr = this.urlInsp.getPrimitiveJavaObject(args[start]);
         if (StringUtils.isBlank(urlStr)) {
-            forwardAction(runtimeErr("url is blank"), args[0]);
+            forwardAction(runtimeErr("url is blank"), args[start]);
         }
 
-
-        HttpPost post = new HttpPost();
-        post.setConfig(rc);
-        Header[] headers;
-
-        if (args.length > start + 4 && args[start + 4] != null && headersInsp != null) {
-            Map<?, ?> headersMap = headersInsp.getMap(args[start + 4]);
-            headers = map2Headers(headersMap);
-            post.setHeaders(headers);
-        }
-
-        if (args.length > start + 5) {
-            String content = contentInsp.getPrimitiveJavaObject(args[start + 5]);
-            try {
-                post.setEntity(new StringEntity(content));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-                forwardAction(runtimeErr("url is blank"), args[0]);
-            }
-        }
+        HttpPost post = setHttpPost(args, start + 3, start + 4);
 
         if (null == hc ) {
             hc = createHc();
@@ -203,7 +158,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                     respHandler,
                     hcCallback);
         }
-        /*&& !resultQueue.isEmpty()*/
+
         while(threadPoolExecutor.getActiveCount() > 0 ){
             while (!resultQueue.isEmpty()) {
                 Object[] pollResults = Optional.ofNullable(resultQueue.poll())
@@ -215,12 +170,6 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     }
 
 
-    private transient CloseableHttpClient hc =
-            createHc();
-
-
-
-
     @Override
     public void close() throws HiveException {
         HttpHelper.close(hc);
@@ -228,5 +177,95 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         threadPoolExecutor.shutdown();
         threadPoolExecutor = null;
     }
+
+    /**
+     * generate a prototype HttpPost
+     * @param args
+     * @param idxHeader
+     * @param idxContent
+     * @return
+     * @throws HiveException
+     */
+    private HttpPost setHttpPost(Object[] args, int idxHeader, int idxContent) throws HiveException {
+        HttpPost post = new HttpPost();
+        post.setConfig(rc);
+        Header[] headers;
+
+        if (args.length > idxHeader && args[idxHeader] != null && headersInsp != null) {
+            Map<?, ?> headersMap = headersInsp.getMap(args[idxHeader]);
+            headers = map2Headers(headersMap);
+            post.setHeaders(headers);
+        }
+
+        if (args.length > idxContent) {
+            String content = contentInsp.getPrimitiveJavaObject(args[idxContent]);
+            try {
+                post.setEntity(new StringEntity(content));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+                forwardAction(runtimeErr("url is blank"), args[idxContent]);
+            }
+        }
+        return post;
+    }
+
+    private void setPageSize(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+        if (args.length > idx) {
+            checkArgPrimitive(NAME, args, idx);
+            pageSize = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(10000);
+        }
+    }
+
+    private void setLimit(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+        if (args.length > idx) {
+            checkArgPrimitive(NAME, args, idx);
+            limit = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(10000);
+        }
+    }
+
+    private void setOffset(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+        if (args.length > idx) {
+            checkArgPrimitive(NAME, args, idx);
+            offset = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(0);
+        }
+    }
+
+    private void setContent(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+        if (args.length > idx) {
+            checkArgPrimitive(NAME, args, idx);
+            ObjectInspector contentObj = args[idx];
+            if (!(args[idx] instanceof StringObjectInspector)) {
+                throw new UDFArgumentTypeException(idx, "content must be string");
+            }
+            this.contentInsp = (StringObjectInspector) contentObj;
+        }
+    }
+
+    private void setTimeout(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+        if (args.length > idx) {
+            checkArgPrimitive(NAME, args, idx);
+            timeout = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(0);
+            rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
+        }
+    }
+
+    private void setReqHeader(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+        if (args.length > idx) {
+            ObjectInspector headerInsp = args[idx];
+            if (headerInsp instanceof WritableVoidObjectInspector) {
+                headersInsp = null;
+            } else {
+                if (!(headerInsp instanceof MapObjectInspector)) {
+                    throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object> or null:\n\t" + args[3]);
+                }
+                MapObjectInspector moi = (MapObjectInspector) headerInsp;
+                if (!(moi.getMapKeyObjectInspector() instanceof StringObjectInspector)) {
+                    throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object>");
+                }
+                headersInsp = moi;
+            }
+        }
+    }
+
 
 }
