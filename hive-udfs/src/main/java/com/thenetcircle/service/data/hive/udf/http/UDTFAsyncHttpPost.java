@@ -133,7 +133,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
         HttpPost post = setHttpPost(args, start + 3, start + 4);
 
-        if (null == hc ) {
+        if (null == hc) {
             hc = createHc();
         }
 
