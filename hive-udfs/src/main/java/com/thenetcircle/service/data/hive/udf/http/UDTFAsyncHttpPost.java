@@ -94,7 +94,6 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
         setPageSize(args, 6);
 
-
         if(null == threadPoolExecutor){
             threadPoolExecutor = new ThreadPoolExecutor(coreNum, coreNum * 2, 8, TimeUnit.SECONDS,
                     new LinkedBlockingDeque<>(1000), new NamedThreadFactory("async_http_post"));
@@ -126,10 +125,10 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     public void process(Object[] args) throws HiveException {
 
         log.info("--- start process ---");
-        int start = 1;
-        String urlStr = this.urlInsp.getPrimitiveJavaObject(args[start]);
+        int start = 0;
+        String urlStr = this.urlInsp.getPrimitiveJavaObject(args[start + 1]);
         if (StringUtils.isBlank(urlStr)) {
-            forwardAction(runtimeErr("url is blank"), args[start]);
+            forwardAction(runtimeErr("url is blank"), args[start + 1]);
         }
 
         HttpPost post = setHttpPost(args, start + 3, start + 4);
@@ -144,7 +143,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         List<String> urls = Lists.newLinkedList();
         //pageable
         int taskNum = limit % pageSize == 0 ? limit / pageSize : (limit / pageSize + 1);
-        for (int i = offset; i < taskNum; i += pageSize) {
+        for (int i = offset; i < taskNum * pageSize; i += pageSize) {
             urls.add(String.format(urlStr, i, pageSize));
         }
         for (String url : urls) {
@@ -256,7 +255,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                 headersInsp = null;
             } else {
                 if (!(headerInsp instanceof MapObjectInspector)) {
-                    throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object> or null:\n\t" + args[3]);
+                    throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object> or null:\n\t" + args[idx]);
                 }
                 MapObjectInspector moi = (MapObjectInspector) headerInsp;
                 if (!(moi.getMapKeyObjectInspector() instanceof StringObjectInspector)) {
