@@ -16,6 +16,8 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -27,6 +29,8 @@ import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveO
 @Description(name = UDTFHttpGet.NAME,
     value = "_FUNC_(url, timeout, headers) - send get request to url with headers in timeout")
 public class UDTFHttpGet extends UDTFExt {
+
+    private static Logger log = LoggerFactory.getLogger(UDTFHttpGet.class);
     public static final String NAME = "t_http_get";
 
     private transient StringObjectInspector urlInsp;
@@ -99,6 +103,7 @@ public class UDTFHttpGet extends UDTFExt {
 
     @Override
     public void close() throws HiveException {
+        log.info("..... \n\n\n close httpclient \n\n\n");
         HttpHelper.close(hc);
         hc = null;
     }

@@ -17,6 +17,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
@@ -30,6 +32,8 @@ import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveO
 @Description(name = UDTFHttpPost.NAME,
     value = "_FUNC_(url, timeout, headers, content) - send post to url with headers in timeout")
 public class UDTFHttpPost extends UDTFExt {
+
+    private static Logger log = LoggerFactory.getLogger(UDTFHttpPost.class);
     public static final String NAME = "t_http_post";
 
     private transient StringObjectInspector urlInsp;
@@ -117,6 +121,7 @@ public class UDTFHttpPost extends UDTFExt {
 
     @Override
     public void close() throws HiveException {
+        log.info("..... \n\n\n close httpclient \n\n\n");
         HttpHelper.close(hc);
         hc = null;
     }

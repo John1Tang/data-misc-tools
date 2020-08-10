@@ -1,6 +1,7 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
 import com.google.common.collect.Lists;
+import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
 import com.thenetcircle.service.data.hive.udf.commons.UDTFSelfForwardBase;
 import org.apache.commons.lang.ObjectUtils;
@@ -44,7 +45,7 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
  * @author john
  */
 @Description(name = UDTFAsyncHttpPost.NAME,
-    value = "_FUNC_(url, timeout, headers, content, offset, limit, pageSize) - send post to url with headers in timeout")
+    value = "_FUNC_(url, timeout, headers, content) - send post to url with headers in timeout")
 public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
     public static final String NAME = "async_http_post";
@@ -158,12 +159,24 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                     hcCallback);
         }
 
-        while(threadPoolExecutor.getActiveCount() > 0 ){
-            while (!resultQueue.isEmpty()) {
+        for (int activeThreadCnt = threadPoolExecutor.getActiveCount();
+             activeThreadCnt > 0 ;
+             activeThreadCnt = threadPoolExecutor.getActiveCount()){
+
+            // TODO
+            // reset page
+            //
+            // sleep
+            if (!resultQueue.isEmpty()) {
                 Object[] pollResults = Optional.ofNullable(resultQueue.poll())
                         .orElse(runtimeErr("nothing in queue yet"));
                 forwardAction(pollResults, args[0]);
+                return;
+            } else {
+//                MiscUtils.easySleep(1000);
+                log.info("nothing in queue yet, there are {} active http threads", activeThreadCnt);
             }
+
         }
 
     }
@@ -171,6 +184,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
     @Override
     public void close() throws HiveException {
+        log.info("\n\n\n close httpclient \n\n\n");
         HttpHelper.close(hc);
         hc = null;
         threadPoolExecutor.shutdown();
