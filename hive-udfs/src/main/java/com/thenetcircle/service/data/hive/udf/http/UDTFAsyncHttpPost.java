@@ -45,18 +45,16 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
  * @author john
  */
 @Description(name = UDTFAsyncHttpPost.NAME,
-    value = "_FUNC_(url, timeout, headers, content) - send post to url with headers in timeout")
+    value = "_FUNC_(url, timeout, headers, content, coreSize) - send post to url with headers in timeout")
 public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
-    public static final String NAME = "async_http_post";
+    public static final String NAME = "a_http_post";
 
     private static Logger log = LoggerFactory.getLogger(UDTFAsyncHttpPost.class);
 
     private transient StringObjectInspector urlInsp;
-    private int offset;
-    private int limit;
     private int timeout;
-    private int pageSize;
+    private int coreSize;
 
     private transient RequestConfig rc;
 
@@ -89,15 +87,12 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
         setContent(args, 3);
 
-        setOffset(args, 4);
+        setCoreSize(args, 4);
 
-        setLimit(args, 5);
-
-        setPageSize(args, 6);
 
         if(null == threadPoolExecutor){
-            threadPoolExecutor = new ThreadPoolExecutor(coreNum, coreNum * 2, 8, TimeUnit.SECONDS,
-                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory("async_http_post"));
+            threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
+                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory(NAME));
         }
 
         hcCallback = new HCCallback() {
@@ -125,14 +120,10 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     @Override
     public void process(Object[] args) throws HiveException {
 
-        log.info("--- start process ---");
+        log.info("--- start UDTFAsyncHttpPost process ---");
         int start = 0;
-        String urlStr = this.urlInsp.getPrimitiveJavaObject(args[start + 1]);
-        if (StringUtils.isBlank(urlStr)) {
-            forwardAction(runtimeErr("url is blank"), args[start + 1]);
-        }
 
-        HttpPost post = setHttpPost(args, start + 3, start + 4);
+        HttpPost httpPost = setHttpPost(args, start + 1, start + 3, start + 4);
 
         if (null == hc) {
             hc = createHc();
@@ -141,40 +132,23 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         FutureRequestExecutionService futureRequestExecutionService =
                 new FutureRequestExecutionService(hc, threadPoolExecutor);
 
-        List<String> urls = Lists.newLinkedList();
-        //pageable
-        int taskNum = limit % pageSize == 0 ? limit / pageSize : (limit / pageSize + 1);
-        for (int i = offset; i < taskNum * pageSize; i += pageSize) {
-            urls.add(String.format(urlStr, i, pageSize));
-        }
-        for (String url : urls) {
-            log.info("--- paging query url {} ---", url);
-            HttpPost postClone = (HttpPost) ObjectUtils.clone(post);
-            postClone.setURI(URI.create(url));
+        HttpRequestFutureTask<Object[]> task = futureRequestExecutionService.execute(
+                httpPost,
+                hcContext,
+                respHandler,
+                hcCallback);
 
-            HttpRequestFutureTask<Object[]> task = futureRequestExecutionService.execute(
-                    postClone,
-                    hcContext,
-                    respHandler,
-                    hcCallback);
-        }
 
         for (int activeThreadCnt = threadPoolExecutor.getActiveCount();
              activeThreadCnt > 0 ;
              activeThreadCnt = threadPoolExecutor.getActiveCount()){
 
-            // TODO
-            // reset page
-            //
-            // sleep
             if (!resultQueue.isEmpty()) {
-                Object[] pollResults = Optional.ofNullable(resultQueue.poll())
-                        .orElse(runtimeErr("nothing in queue yet"));
+                Object[] pollResults = resultQueue.poll();
                 forwardAction(pollResults, args[0]);
-                return;
             } else {
-//                MiscUtils.easySleep(1000);
-                log.info("nothing in queue yet, there are {} active http threads", activeThreadCnt);
+                MiscUtils.easySleep(1000);
+                log.info("nothing in the forward queue yet, there are {} active http threads under processing", activeThreadCnt);
             }
 
         }
@@ -199,8 +173,14 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
      * @return
      * @throws HiveException
      */
-    private HttpPost setHttpPost(Object[] args, int idxHeader, int idxContent) throws HiveException {
-        HttpPost post = new HttpPost();
+    private HttpPost setHttpPost(Object[] args, int idxUrl, int idxHeader, int idxContent) throws HiveException {
+
+        String urlStr = this.urlInsp.getPrimitiveJavaObject(args[idxUrl]);
+        if (StringUtils.isBlank(urlStr)) {
+            forwardAction(runtimeErr("url is blank"), args[idxUrl]);
+        }
+
+        HttpPost post = new HttpPost(urlStr);
         post.setConfig(rc);
         Header[] headers;
 
@@ -222,26 +202,16 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         return post;
     }
 
-    private void setPageSize(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
+    private void setCoreSize(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
         if (args.length > idx) {
             checkArgPrimitive(NAME, args, idx);
-            pageSize = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(10000);
+            coreSize = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(coreNum);
+            if (coreSize < 1 || coreSize > coreNum) {
+                coreSize = coreNum;
+            }
         }
     }
 
-    private void setLimit(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
-        if (args.length > idx) {
-            checkArgPrimitive(NAME, args, idx);
-            limit = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(10000);
-        }
-    }
-
-    private void setOffset(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
-        if (args.length > idx) {
-            checkArgPrimitive(NAME, args, idx);
-            offset = Optional.ofNullable(getConstantIntValue(NAME, args, idx)).orElse(0);
-        }
-    }
 
     private void setContent(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
         if (args.length > idx) {
