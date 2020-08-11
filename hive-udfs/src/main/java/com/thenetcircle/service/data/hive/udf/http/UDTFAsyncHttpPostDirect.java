@@ -1,10 +1,7 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
-import com.google.common.collect.Lists;
-import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
 import com.thenetcircle.service.data.hive.udf.commons.UDTFSelfForwardBase;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
@@ -27,16 +24,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.LongAdder;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.*;
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
@@ -45,13 +39,13 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
 /**
  * @author john
  */
-@Description(name = UDTFAsyncHttpPost.NAME,
+@Description(name = UDTFAsyncHttpPostDirect.NAME,
     value = "_FUNC_(url, timeout, headers, content, coreSize) - send post to url with headers in timeout")
-public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
+public class UDTFAsyncHttpPostDirect extends UDTFSelfForwardBase {
 
-    public static final String NAME = "a_http_post";
+    public static final String NAME = "a_http_post_direct";
 
-    private static Logger log = LoggerFactory.getLogger(UDTFAsyncHttpPost.class);
+    private static Logger log = LoggerFactory.getLogger(UDTFAsyncHttpPostDirect.class);
 
     private transient StringObjectInspector urlInsp;
     private int timeout;
@@ -69,9 +63,8 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
     private transient ThreadPoolExecutor threadPoolExecutor;
 
-    private transient static Object offset;
+    private transient static ThreadLocal<Object> offset = new ThreadLocal<>();
 
-    private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
     private HCCallback hcCallback;
 
     private transient CloseableHttpClient hc = createHc();
@@ -101,17 +94,29 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
             @Override
             public void completed(Object[] result) {
                 log.info(Thread.currentThread().getName() + Arrays.toString(result));
-                resultQueue.offer(result);
+                try {
+                    forwardAction(result, offset.get());
+                } catch (HiveException e) {
+                    log.error("forwardAction error: ", e);
+                }
             }
 
             @Override
             public void failed(Exception ex) {
-                resultQueue.offer(runtimeErr(ex.getMessage()));
+                try {
+                    forwardAction(runtimeErr(ex.getMessage()), offset.get());
+                } catch (HiveException e) {
+                    log.error("failed error: ", e);
+                }
             }
 
             @Override
             public void cancelled() {
-                resultQueue.offer(runtimeErr("task cancelled"));
+                try {
+                    forwardAction(runtimeErr("task cancelled"), offset.get());
+                } catch (HiveException e) {
+                    log.error("cancelled error: ", e);
+                }
             }
         };
 
@@ -122,7 +127,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     @Override
     public void process(Object[] args) throws HiveException {
 
-        log.info("--- start UDTFAsyncHttpPost process ---");
+        log.info("--- start UDTFAsyncHttpPostDirect process ---");
         int start = 0;
 
         HttpPost httpPost = setHttpPost(args, start + 1, start + 3, start + 4);
@@ -140,35 +145,13 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                 respHandler,
                 hcCallback);
 
-        for (int activeThreadCnt = threadPoolExecutor.getActiveCount();
-             activeThreadCnt > 0 ;
-             activeThreadCnt = threadPoolExecutor.getActiveCount()){
-
-            if (!resultQueue.isEmpty()) {
-                Object[] pollResults = resultQueue.poll();
-                forwardAction(pollResults, args[0]);
-                offset = args[0];
-
-            } else {
-                MiscUtils.easySleep(1000);
-                log.info("nothing in the forward queue yet, there are {} active http threads under processing", activeThreadCnt);
-            }
-
-        }
+        offset.set(args[0]);
 
     }
 
 
     @Override
     public void close() throws HiveException {
-        while (threadPoolExecutor.getActiveCount() > -1) {
-            log.info("poolActiveCount: {}, resultQueueSize: {}", threadPoolExecutor.getActiveCount(), resultQueue.size());
-            while (!resultQueue.isEmpty()) {
-                Object[] pollResults = resultQueue.poll();
-                forwardAction(pollResults, offset);
-            }
-        }
-
         log.info("\n\n\n close httpclient \n\n\n");
         HttpHelper.close(hc);
         hc = null;
