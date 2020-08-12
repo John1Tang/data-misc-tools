@@ -141,9 +141,9 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                 hcCallback);
 
         for (int activeThreadCnt = threadPoolExecutor.getActiveCount();
-             activeThreadCnt > 0 ;
+         activeThreadCnt > 0 &&  threadPoolExecutor.getQueue().size() > 0;
              activeThreadCnt = threadPoolExecutor.getActiveCount()){
-
+            log.info("poolActiveCount: {}, resultQueueSize: {}", threadPoolExecutor.getActiveCount(), resultQueue.size());
             if (!resultQueue.isEmpty()) {
                 Object[] pollResults = resultQueue.poll();
                 forwardAction(pollResults, args[0]);
@@ -161,13 +161,6 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
     @Override
     public void close() throws HiveException {
-        while (threadPoolExecutor.getActiveCount() > -1) {
-            log.info("poolActiveCount: {}, resultQueueSize: {}", threadPoolExecutor.getActiveCount(), resultQueue.size());
-            while (!resultQueue.isEmpty()) {
-                Object[] pollResults = resultQueue.poll();
-                forwardAction(pollResults, offset);
-            }
-        }
 
         log.info("\n\n\n close httpclient \n\n\n");
         HttpHelper.close(hc);
