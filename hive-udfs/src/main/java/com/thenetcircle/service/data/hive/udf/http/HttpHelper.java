@@ -37,8 +37,7 @@ import java.util.Map;
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory.getStandardMapObjectInspector;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaIntObjectInspector;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaStringObjectInspector;
+import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.*;
 
 public class HttpHelper {
 
@@ -77,8 +76,27 @@ public class HttpHelper {
         RESULT_FIELDS,
         RESULT_FIELD_INSPECTORS);
 
+
+    public static final List<String> ASYNC_RESULT_FIELDS = Arrays.asList("code", "headers", "content");
+    public static final List<ObjectInspector> ASYNC_RESULT_FIELD_INSPECTORS = Arrays.asList(
+            javaIntObjectInspector,
+            getStandardMapObjectInspector(
+                    javaStringObjectInspector,
+                    javaStringObjectInspector),
+            javaStringObjectInspector);
+
+    public static final StandardStructObjectInspector ASYNC_RESULT_TYPE = ObjectInspectorFactory.getStandardStructObjectInspector(
+            ASYNC_RESULT_FIELDS,
+            ASYNC_RESULT_FIELD_INSPECTORS);
+
+
+
     public static Object[] runtimeErr(String errMsg) {
         return new Object[]{-1, null, errMsg};
+    }
+
+    public static Object[] runtimeErr(Object ctx, String errMsg) {
+        return new Object[]{-1, null, errMsg,ctx};
     }
 
     public static Object[] runtimeErr(Throwable e) {
@@ -156,16 +174,30 @@ public class HttpHelper {
 }
 
 final class RespHandler implements ResponseHandler<Object[]> {
+
+    private transient Object ctx;
+
+    public RespHandler() {
+    }
+
+    public RespHandler(Object ctx) {
+        this.ctx = ctx;
+    }
+
     @Override
     public Object[] handleResponse(
             final HttpResponse response) throws ClientProtocolException, IOException {
-        return new Object[]{response.getStatusLine().getStatusCode(),
+        return new Object[]{
+                response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
-                EntityUtils.toString(response.getEntity())};
+                EntityUtils.toString(response.getEntity()) ,
+                ctx};
     }
 }
 
- interface HCCallback extends FutureCallback<Object[]> {
+
+
+ interface IHttpClientCallback extends FutureCallback<Object[]> {
 
     @Override
     default void failed(final Exception ex) {

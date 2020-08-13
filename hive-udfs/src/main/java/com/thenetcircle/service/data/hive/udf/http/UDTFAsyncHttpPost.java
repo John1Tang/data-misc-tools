@@ -1,15 +1,14 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
-import com.google.common.collect.Lists;
+import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
-import com.thenetcircle.service.data.hive.udf.commons.UDTFSelfForwardBase;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
@@ -27,15 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.*;
@@ -46,8 +41,8 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
  * @author john
  */
 @Description(name = UDTFAsyncHttpPost.NAME,
-    value = "_FUNC_(url, timeout, headers, content, coreSize) - send post to url with headers in timeout")
-public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
+        value = "_FUNC_(ctx, url, timeout, headers, content, coreSize) - send post to url with headers in timeout")
+public class UDTFAsyncHttpPost extends GenericUDTF {
 
     public static final String NAME = "a_http_post";
 
@@ -69,35 +64,37 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
     private transient ThreadPoolExecutor threadPoolExecutor;
 
-    private transient static Object offset;
+    private transient LongAccumulator processCounter = new LongAccumulator((x, y) -> x + y, 0);
+    private transient LongAdder batchCounter = new LongAdder();
 
     private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
-    private HCCallback hcCallback;
+    private IHttpClientCallback IHttpClientCallback;
 
     private transient CloseableHttpClient hc = createHc();
 
     @Override
-    public StructObjectInspector _initialize(ObjectInspector[] args) throws UDFArgumentException {
-        checkArgsSize(NAME, args, 4,  5);
+    public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
+        checkArgsSize(NAME, argInsps, 5, 6);
 
-        checkArgPrimitive(NAME, args, 0);
-        this.urlInsp = (StringObjectInspector) args[0];
+        checkArgPrimitive(NAME, argInsps, 1);
+        this.urlInsp = (StringObjectInspector) argInsps[1];
 
-        setTimeout(args, 1);
+        setTimeout(argInsps, 2);
 
-        setReqHeader(args, 2);
+        setReqHeader(argInsps, 3);
 
-        setContent(args, 3);
+        setContent(argInsps, 4);
 
-        setCoreSize(args, 4);
+        setCoreSize(argInsps, 5);
 
 
-        if(null == threadPoolExecutor){
-            threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
-                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory(NAME));
+        if (null == threadPoolExecutor) {
+//            threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
+//                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory(NAME));
+            threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreSize * 2, new NamedThreadFactory(NAME));
         }
 
-        hcCallback = new HCCallback() {
+        IHttpClientCallback = new IHttpClientCallback() {
             @Override
             public void completed(Object[] result) {
                 log.info(Thread.currentThread().getName() + Arrays.toString(result));
@@ -106,23 +103,25 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
             @Override
             public void failed(Exception ex) {
-                resultQueue.offer(runtimeErr(ex.getMessage()));
+                resultQueue.offer(runtimeErr(0, ex.getMessage()));
             }
 
             @Override
             public void cancelled() {
-                resultQueue.offer(runtimeErr("task cancelled"));
+                resultQueue.offer(runtimeErr(0, "task cancelled"));
             }
         };
 
-        return RESULT_TYPE;
+        return UDFHelper.addContextToStructInsp(ASYNC_RESULT_TYPE, argInsps[0]);
     }
 
 
     @Override
     public void process(Object[] args) throws HiveException {
 
-        log.info("--- start UDTFAsyncHttpPost process ---");
+        Object ctx = args[0];
+        processCounter.accumulate(1);
+        log.info("\n--- start UDTFAsyncHttpPost process --- \nwith ctx: {}\n", ctx);
         int start = 0;
 
         HttpPost httpPost = setHttpPost(args, start + 1, start + 3, start + 4);
@@ -137,24 +136,57 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
         HttpRequestFutureTask<Object[]> task = futureRequestExecutionService.execute(
                 httpPost,
                 hcContext,
-                respHandler,
-                hcCallback);
+                new RespHandler(ctx),
+                new IHttpClientCallback() {
+                    @Override
+                    public void completed(Object[] result) {
+                        log.info(Thread.currentThread().getName() + Arrays.toString(result));
+                        resultQueue.offer(result);
+                    }
 
-        for (int activeThreadCnt = threadPoolExecutor.getActiveCount();
-         activeThreadCnt > 0 &&  threadPoolExecutor.getQueue().size() > 0;
-             activeThreadCnt = threadPoolExecutor.getActiveCount()){
-            log.info("poolActiveCount: {}, resultQueueSize: {}", threadPoolExecutor.getActiveCount(), resultQueue.size());
-            if (!resultQueue.isEmpty()) {
-                Object[] pollResults = resultQueue.poll();
-                forwardAction(pollResults, args[0]);
-                offset = args[0];
+                    @Override
+                    public void failed(Exception ex) {
+                        resultQueue.offer(runtimeErr(ctx, ex.getMessage()));
+                    }
 
-            } else {
+                    @Override
+                    public void cancelled() {
+                        resultQueue.offer(runtimeErr(ctx, "task cancelled"));
+                    }
+                });
+
+        while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getMaximumPoolSize()) {
+            log.info("\n\n thread pool is full! {}\n\n", ctx);
+            while (resultQueue.isEmpty()) {
                 MiscUtils.easySleep(1000);
-                log.info("nothing in the forward queue yet, there are {} active http threads under processing", activeThreadCnt);
+                log.info("\n\n but not result yet! {}\n\n", ctx);
             }
-
+            Object[] pullResult = resultQueue.poll();
+            log.info("going to forward ctx: {} get result {}", ctx, pullResult[1]);
+            batchCounter.increment();
+            forward(pullResult);
+            return;
         }
+
+//        while (true) {
+//            if (!resultQueue.isEmpty()) {
+//                if (batchCounter.longValue() < coreSize) {
+//                    batchCounter.increment();
+//                    MiscUtils.easySleep(1000);
+//                    break;
+//                }
+//                while (!resultQueue.isEmpty()) {
+//                    Object[] pollResults = resultQueue.poll();
+//                    forward(pollResults);
+//                    log.info("\n\ncurrent ctx {}, http code: {}", pollResults[0], pollResults[1]);
+//                }
+//                processCounter.accumulate(coreSize);
+//                batchCounter.reset();
+//                break;
+//            }
+//            MiscUtils.easySleep(1000);
+//            log.info("completedTaskCount: {}, processCount: {}", threadPoolExecutor.getCompletedTaskCount(), processCounter.get());
+//        }
 
     }
 
@@ -162,7 +194,35 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
     @Override
     public void close() throws HiveException {
 
-        log.info("\n\n\n close httpclient \n\n\n");
+        log.info("\n\nUDTFAsyncHttpPost.close()");
+//        while (threadPoolExecutor.getQueue().size() > 0 || threadPoolExecutor.getCompletedTaskCount() > processCounter.longValue()) {
+        while (threadPoolExecutor.getActiveCount() > 0) {
+
+            while (resultQueue.isEmpty()) {
+                MiscUtils.easySleep(1000);
+                log.info("\n\nwaited 1 second but not result in queue yet!\n\n");
+            }
+            Object[] pullResult = resultQueue.poll();
+            log.info("going to forward key: {} get result {}", pullResult[0], pullResult[1]);
+            batchCounter.increment();
+            forward(pullResult);
+//                MiscUtils.easySleep(1000);
+//                log.info("\n\nUDTFAsyncHttpPost.close() completedTaskCount: {}, processCount: {}", threadPoolExecutor.getCompletedTaskCount(), processCounter.get());
+//                Object[] pollResults = resultQueue.poll();
+//                forward(pollResults);
+//                processCounter.accumulate(1);
+
+//            MiscUtils.easySleep(1000);
+            log.info("completedTaskCount: {}, processCount: {}", threadPoolExecutor.getCompletedTaskCount(), processCounter.get());
+        }
+
+        for (Object[] pullResult : resultQueue) {
+            log.info("going to forward key: {} get result {}", pullResult[0], pullResult[1]);
+            batchCounter.increment();
+            forward(pullResult);
+        }
+
+        log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), batchCounter.longValue());
         HttpHelper.close(hc);
         hc = null;
         threadPoolExecutor.shutdown();
@@ -171,6 +231,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
     /**
      * generate a prototype HttpPost
+     *
      * @param args
      * @param idxHeader
      * @param idxContent
@@ -181,7 +242,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
 
         String urlStr = this.urlInsp.getPrimitiveJavaObject(args[idxUrl]);
         if (StringUtils.isBlank(urlStr)) {
-            forwardAction(runtimeErr("url is blank"), args[idxUrl]);
+            forward(runtimeErr(0, "url is blank"));
         }
 
         HttpPost post = new HttpPost(urlStr);
@@ -200,7 +261,7 @@ public class UDTFAsyncHttpPost extends UDTFSelfForwardBase {
                 post.setEntity(new StringEntity(content));
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
-                forwardAction(runtimeErr("url is blank"), args[idxContent]);
+                forward(runtimeErr(0, "url is blank"));
             }
         }
         return post;
