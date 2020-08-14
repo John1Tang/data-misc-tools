@@ -1,5 +1,6 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
+import com.google.common.collect.Lists;
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
@@ -25,13 +26,17 @@ import org.apache.http.impl.client.HttpRequestFutureTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.*;
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
@@ -62,15 +67,18 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
 
     private transient final int coreNum = Runtime.getRuntime().availableProcessors();
 
-    private transient ThreadPoolExecutor threadPoolExecutor;
-
     private transient LongAccumulator processCounter = new LongAccumulator((x, y) -> x + y, 0);
+    private transient LongAdder forwardCounter = new LongAdder();
     private transient LongAdder batchCounter = new LongAdder();
 
     private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
     private IHttpClientCallback IHttpClientCallback;
 
     private transient CloseableHttpClient hc = createHc();
+    private transient volatile ThreadPoolExecutor threadPoolExecutor;
+    private transient FutureRequestExecutionService futureRequestExecutionService;
+
+    private List<CompletableFuture<Void>> futureList = Lists.newLinkedList();
 
     @Override
     public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
@@ -88,11 +96,7 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
         setCoreSize(argInsps, 5);
 
 
-        if (null == threadPoolExecutor) {
-//            threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
-//                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory(NAME));
-            threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreSize * 2, new NamedThreadFactory(NAME));
-        }
+        threadPoolExecutor = getThreadPoolExecutor();
 
         IHttpClientCallback = new IHttpClientCallback() {
             @Override
@@ -115,6 +119,19 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
         return UDFHelper.addContextToStructInsp(ASYNC_RESULT_TYPE, argInsps[0]);
     }
 
+    private ThreadPoolExecutor getThreadPoolExecutor() {
+        if (null == threadPoolExecutor) {
+//            threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
+//                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory(NAME));
+            synchronized (this) {
+                if (null == threadPoolExecutor) {
+                    threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreSize * 2, new NamedThreadFactory(NAME));
+                }
+            }
+        }
+        return threadPoolExecutor;
+    }
+
 
     @Override
     public void process(Object[] args) throws HiveException {
@@ -126,12 +143,13 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
 
         HttpPost httpPost = setHttpPost(args, start + 1, start + 3, start + 4);
 
-        if (null == hc) {
-            hc = createHc();
+        if (null == futureRequestExecutionService){
+            synchronized (this) {
+                if (null == futureRequestExecutionService) {
+                    futureRequestExecutionService = new FutureRequestExecutionService(hc, threadPoolExecutor);
+                }
+            }
         }
-
-        FutureRequestExecutionService futureRequestExecutionService =
-                new FutureRequestExecutionService(hc, threadPoolExecutor);
 
         HttpRequestFutureTask<Object[]> task = futureRequestExecutionService.execute(
                 httpPost,
@@ -155,38 +173,38 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
                     }
                 });
 
+
         while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getMaximumPoolSize()) {
-            log.info("\n\n thread pool is full! {}\n\n", ctx);
+            log.info("\n\n -- process() -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
+
             while (resultQueue.isEmpty()) {
                 MiscUtils.easySleep(1000);
-                log.info("\n\n but not result yet! {}\n\n", ctx);
+                log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
             }
-            Object[] pullResult = resultQueue.poll();
-            log.info("going to forward ctx: {} get result {}", ctx, pullResult[1]);
-            batchCounter.increment();
-            forward(pullResult);
+
+            if (threadPoolExecutor.getCompletedTaskCount() - forwardCounter.longValue() == threadPoolExecutor.getCorePoolSize()) {
+                while (!resultQueue.isEmpty()) {
+                    Object[] pullResult = resultQueue.poll();
+                    log.info("\n\n -- process() --going to forward ctx: {} get result {}", pullResult[3], pullResult[0]);
+                    forwardCounter.increment();
+                    forward(pullResult);
+                }
+            } else {
+                MiscUtils.easySleep(1000);
+                log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
+            }
+
+            while (processCounter.longValue() > threadPoolExecutor.getPoolSize()
+                    && processCounter.get() - forwardCounter.longValue() < threadPoolExecutor.getMaximumPoolSize()){
+                MiscUtils.easySleep(1000);
+                log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
+                if (!resultQueue.isEmpty() && resultQueue.size() > threadPoolExecutor.getCorePoolSize()){
+                    break;
+                }
+            }
+
             return;
         }
-
-//        while (true) {
-//            if (!resultQueue.isEmpty()) {
-//                if (batchCounter.longValue() < coreSize) {
-//                    batchCounter.increment();
-//                    MiscUtils.easySleep(1000);
-//                    break;
-//                }
-//                while (!resultQueue.isEmpty()) {
-//                    Object[] pollResults = resultQueue.poll();
-//                    forward(pollResults);
-//                    log.info("\n\ncurrent ctx {}, http code: {}", pollResults[0], pollResults[1]);
-//                }
-//                processCounter.accumulate(coreSize);
-//                batchCounter.reset();
-//                break;
-//            }
-//            MiscUtils.easySleep(1000);
-//            log.info("completedTaskCount: {}, processCount: {}", threadPoolExecutor.getCompletedTaskCount(), processCounter.get());
-//        }
 
     }
 
@@ -200,33 +218,31 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
 
             while (resultQueue.isEmpty()) {
                 MiscUtils.easySleep(1000);
-                log.info("\n\nwaited 1 second but not result in queue yet!\n\n");
+                log.info("\n\n -- close() -- waited 1 second but not result in queue yet! consumer size: {}\n\n", forwardCounter.longValue());
             }
             Object[] pullResult = resultQueue.poll();
-            log.info("going to forward key: {} get result {}", pullResult[0], pullResult[1]);
-            batchCounter.increment();
+            log.info("\n\n -- close() -- going to forward key: {} get result {}", pullResult[3], pullResult[0]);
+            forwardCounter.increment();
             forward(pullResult);
-//                MiscUtils.easySleep(1000);
-//                log.info("\n\nUDTFAsyncHttpPost.close() completedTaskCount: {}, processCount: {}", threadPoolExecutor.getCompletedTaskCount(), processCounter.get());
-//                Object[] pollResults = resultQueue.poll();
-//                forward(pollResults);
-//                processCounter.accumulate(1);
-
-//            MiscUtils.easySleep(1000);
-            log.info("completedTaskCount: {}, processCount: {}", threadPoolExecutor.getCompletedTaskCount(), processCounter.get());
+            log.info("\n\n -- close() -- consumer size: {}, processCount: {}", forwardCounter.longValue(), processCounter.get());
         }
 
         for (Object[] pullResult : resultQueue) {
-            log.info("going to forward key: {} get result {}", pullResult[0], pullResult[1]);
-            batchCounter.increment();
+            log.info("\n\n -- close() -- going to forward key: {} get result {}", pullResult[3], pullResult[0]);
+            forwardCounter.increment();
             forward(pullResult);
         }
 
-        log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), batchCounter.longValue());
+        log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), forwardCounter.longValue());
         HttpHelper.close(hc);
         hc = null;
         threadPoolExecutor.shutdown();
         threadPoolExecutor = null;
+        try {
+            futureRequestExecutionService.close();
+        } catch (IOException e) {
+            log.error("fail to close futureRequestExecutionService...");
+        }
     }
 
     /**
