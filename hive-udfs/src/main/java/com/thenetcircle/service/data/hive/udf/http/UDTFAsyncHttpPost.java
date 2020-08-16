@@ -182,20 +182,8 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
                 log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
             }
 
-            if (threadPoolExecutor.getCompletedTaskCount() - forwardCounter.longValue() == threadPoolExecutor.getCorePoolSize()) {
-                while (!resultQueue.isEmpty()) {
-                    Object[] pullResult = resultQueue.poll();
-                    log.info("\n\n -- process() --going to forward ctx: {} get result {}", pullResult[3], pullResult[0]);
-                    forwardCounter.increment();
-                    forward(pullResult);
-                }
-            } else {
-                MiscUtils.easySleep(1000);
-                log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
-            }
-
             while (processCounter.longValue() > threadPoolExecutor.getPoolSize()
-                    && processCounter.get() - forwardCounter.longValue() < threadPoolExecutor.getMaximumPoolSize()){
+                    && processCounter.get() - forwardCounter.longValue() < threadPoolExecutor.getCorePoolSize()){
                 MiscUtils.easySleep(1000);
                 log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
                 if (!resultQueue.isEmpty() && resultQueue.size() > threadPoolExecutor.getCorePoolSize()){
@@ -203,6 +191,12 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
                 }
             }
 
+            while (!resultQueue.isEmpty()) {
+                Object[] pullResult = resultQueue.poll();
+                log.info("\n\n -- process() --going to forward ctx: {} get result {}", pullResult[3], pullResult[0]);
+                forwardCounter.increment();
+                forward(pullResult);
+            }
             return;
         }
 
