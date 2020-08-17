@@ -121,8 +121,6 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
 
     private ThreadPoolExecutor getThreadPoolExecutor() {
         if (null == threadPoolExecutor) {
-//            threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
-//                    new LinkedBlockingDeque<>(1000), new NamedThreadFactory(NAME));
             synchronized (this) {
                 if (null == threadPoolExecutor) {
                     threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreSize * 2, new NamedThreadFactory(NAME));
@@ -182,6 +180,7 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
                 log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
             }
 
+            // limit coming http request
             while (processCounter.longValue() > threadPoolExecutor.getPoolSize()
                     && processCounter.get() - forwardCounter.longValue() < threadPoolExecutor.getCorePoolSize()){
                 MiscUtils.easySleep(1000);
@@ -193,7 +192,7 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
 
             while (!resultQueue.isEmpty()) {
                 Object[] pullResult = resultQueue.poll();
-                log.info("\n\n -- process() --going to forward ctx: {} get result {}", pullResult[3], pullResult[0]);
+                log.info("\n\n -- process() --going to forward ctx: {} status: {}", pullResult[3], pullResult[0]);
                 forwardCounter.increment();
                 forward(pullResult);
             }
@@ -207,22 +206,22 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
     public void close() throws HiveException {
 
         log.info("\n\nUDTFAsyncHttpPost.close()");
-//        while (threadPoolExecutor.getQueue().size() > 0 || threadPoolExecutor.getCompletedTaskCount() > processCounter.longValue()) {
+        
         while (threadPoolExecutor.getActiveCount() > 0) {
-
             while (resultQueue.isEmpty()) {
                 MiscUtils.easySleep(1000);
-                log.info("\n\n -- close() -- waited 1 second but not result in queue yet! consumer size: {}\n\n", forwardCounter.longValue());
+                log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCounter.longValue());
             }
             Object[] pullResult = resultQueue.poll();
-            log.info("\n\n -- close() -- going to forward key: {} get result {}", pullResult[3], pullResult[0]);
+            log.info("\n\n -- close() -- going to forward key: {} status: {}", pullResult[3], pullResult[0]);
             forwardCounter.increment();
             forward(pullResult);
-            log.info("\n\n -- close() -- consumer size: {}, processCount: {}", forwardCounter.longValue(), processCounter.get());
+            log.info("\n\n -- close() -- forward size: {}, process size: {}", forwardCounter.longValue(), processCounter.get());
         }
 
-        for (Object[] pullResult : resultQueue) {
-            log.info("\n\n -- close() -- going to forward key: {} get result {}", pullResult[3], pullResult[0]);
+        while (!resultQueue.isEmpty()) {
+            Object[] pullResult = resultQueue.poll();
+            log.info("\n\n -- close() -- going to forward key: {} status: {}", pullResult[3], pullResult[0]);
             forwardCounter.increment();
             forward(pullResult);
         }
