@@ -136,7 +136,7 @@ public class UDTFAsyncHttpPost extends GenericUDTF {
 
         Object ctx = args[0];
         processCounter.accumulate(1);
-        log.info("\n--- start UDTFAsyncHttpPost process --- \nwith ctx: {}\n", ctx);
+        log.info("\n--- start UDTFAsyncHttpPost process --- \nwith ctx: {}\npool size: {}", ctx, threadPoolExecutor.getPoolSize());
         int start = 0;
 
         HttpPost httpPost = setHttpPost(args, start + 1, start + 3, start + 4);
