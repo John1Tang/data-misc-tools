@@ -1,9 +1,9 @@
 package com.thenetcircle.service.data.hive.udf.udaf;
 
+import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
-import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFMkCollectionEvaluator;
 import org.apache.hadoop.hive.serde2.objectinspector.*;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
@@ -12,6 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
+
+import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.ASYNC_RESULT_TYPE;
+import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory.getStandardMapObjectInspector;
+import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaIntObjectInspector;
+import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaStringObjectInspector;
 
 /**
  * @author john
@@ -25,22 +30,27 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     /**
      * For PARTIAL1 and COMPLETE: ObjectInspectors for original data
      */
-    private transient ObjectInspector ctx;
-    private transient StringObjectInspector url;
-    private transient IntObjectInspector timeout;
-    private transient MapObjectInspector headers;
-    private transient StringObjectInspector content;
+    public static ObjectInspector ctxInsp;
+    public transient static final List<String> FIELD_NAMES = Arrays.asList("url", "timeout", "headers", "content");
+    private static transient StringObjectInspector urlInsp = javaStringObjectInspector;
+    private static transient IntObjectInspector timeoutInsp = javaIntObjectInspector;
+    private static transient MapObjectInspector headersInsp = getStandardMapObjectInspector(
+            javaStringObjectInspector,
+            javaStringObjectInspector);
+    private static transient StringObjectInspector contentInsp = javaStringObjectInspector;
+    public transient static final List<ObjectInspector> FIELD_INSPECTORS = Arrays.asList(urlInsp, timeoutInsp, headersInsp, contentInsp);
+    public StandardStructObjectInspector objectInspector = ObjectInspectorFactory.getStandardStructObjectInspector(FIELD_NAMES, FIELD_INSPECTORS);
 
     /**
      * For PARTIAL2 and FINAL: ObjectInspectors for partial aggregations (list
      * of objs)
       */
-    private transient StandardListObjectInspector loi;
-    private transient StructObjectInspector inputOI;
+    private transient static ListObjectInspector loi;
+    private transient static StructObjectInspector inputOI;
 
     private transient ListObjectInspector internalMergeOI;
 
-    private List<String> names = Arrays.asList("ctx", "url", "timeout", "headers", "content");
+
 
     enum HttpMethod {
         GET, POST, PUT, DELETE
@@ -59,13 +69,12 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
         // init output object inspectors
         // The output of a partial aggregation is a list
         if (m == Mode.PARTIAL1) {
-            List<ObjectInspector> inspectors = getObjectInspectors(parameters);
-            return ObjectInspectorFactory.getStandardStructObjectInspector(names, inspectors);
+            inputOI = UDFHelper.addCtxToFirstStructInsp(objectInspector, parameters[0]);
+            return ObjectInspectorFactory.getStandardListObjectInspector(inputOI);
 
         } else {
             if (!(parameters[0] instanceof ListObjectInspector)) {
                 //no map aggregation.
-                inputOI = (StructObjectInspector) parameters[0];
                 return ObjectInspectorFactory.getStandardListObjectInspector(inputOI);
             } else {
                 internalMergeOI = (ListObjectInspector) parameters[0];
@@ -77,16 +86,6 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
         }
     }
 
-    private List<ObjectInspector> getObjectInspectors(ObjectInspector[] parameters) {
-        ctx = parameters[0];
-        url = (StringObjectInspector) parameters[1];
-        timeout = (IntObjectInspector) parameters[2];
-        headers = (MapObjectInspector) parameters[3];
-        content = (StringObjectInspector) parameters[4];
-
-        List<ObjectInspector> inspectors = Arrays.asList(ctx, url, timeout, headers, content);
-        return inspectors;
-    }
 
     class HttpReqAggBuffer extends AbstractAggregationBuffer{
 
@@ -111,24 +110,14 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     public void iterate(AggregationBuffer agg, Object[] parameters) throws HiveException {
 
         log.info("iterate start on machine: {}", NetUtil.getNet().getRunInfo());
-        assert (parameters.length > 0);
+        assert (parameters.length != UDAFHttpPost.PARAM_SIZE);
 
         HttpReqAggBuffer httpReqAggBuffer = (HttpReqAggBuffer) agg;
-        if (parameters.length == UDAFHttpPost.PARAM_SIZE) {
-            log.info("iterate 5 parameters: {}", Arrays.toString(parameters));
-            Object p1 = parameters[0];
-            Object p2 = url.getPrimitiveJavaObject(parameters[1]);
-            Object p3 = timeout.getPrimitiveJavaObject(parameters[2]);
-            Object p4 = headers.getMap(parameters[3]);
-            Object p5 = content.getPrimitiveJavaObject(parameters[4]);
-            // TODO: execute http request
 
-            offerCollection(new Object[]{p1, p2, p3, p4, p5}, httpReqAggBuffer);
-        } else {
-            log.info("iterate one parameter: {}", Arrays.toString(parameters));
-            offerCollection((Object[]) parameters[0], httpReqAggBuffer);
-        }
+        log.info("iterate 5 parameters: {}", Arrays.toString(parameters));
+        // TODO: execute http request
 
+        offerCollection(parameters, httpReqAggBuffer);
     }
 
     @Override
@@ -165,7 +154,7 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     private void offerCollection(Object[] p, HttpReqAggBuffer httpReqAggBuffer) {
         log.info("offerCollection: object:" + Arrays.toString(p));
         // FIXME NullPointerException
-        Object[] pCopy = (Object[]) ObjectInspectorUtils.copyToStandardObject(p,  this.internalMergeOI);
+        Object[] pCopy =  ((ArrayList<Object>)ObjectInspectorUtils.copyToStandardObject(p, inputOI)).toArray();
         log.info("offerCollection: pCopy:" + Arrays.toString(pCopy));
         httpReqAggBuffer.container.add(pCopy);
     }

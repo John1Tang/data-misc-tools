@@ -293,6 +293,21 @@ public class UDFHelper {
         return ObjectInspectorFactory.getStandardStructObjectInspector(fieldNames, fieldInsp);
     }
 
+    public static StructObjectInspector addCtxToFirstStructInsp(StructObjectInspector soip, ObjectInspector oip) {
+        if (soip == null || oip == null) {
+            return null;
+        }
+
+        List<? extends StructField> fieldRefs = soip.getAllStructFieldRefs();
+        List<String> fieldNames = fieldRefs.stream().map(StructField::getFieldName).collect(Collectors.toList());
+        List<ObjectInspector> fieldInsp = fieldRefs.stream().map(StructField::getFieldObjectInspector).collect(Collectors.toList());
+
+        fieldNames.add(0, "ctx");
+        fieldInsp.add(0, oip);
+
+        return ObjectInspectorFactory.getStandardStructObjectInspector(fieldNames, fieldInsp);
+    }
+
     private static transient final Logger log = LoggerFactory.getLogger(UDFHelper.class);
 
     static {
