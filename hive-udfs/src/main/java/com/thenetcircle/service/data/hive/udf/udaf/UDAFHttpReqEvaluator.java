@@ -51,7 +51,6 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     private transient ListObjectInspector internalMergeOI;
 
 
-
     enum HttpMethod {
         GET, POST, PUT, DELETE
     }
@@ -124,6 +123,8 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     public Object terminatePartial(AggregationBuffer agg) throws HiveException {
         log.info("terminatePartial start on machine: {}", NetUtil.getNet().getRunInfo());
         HttpReqAggBuffer httpReqAggBuffer = (HttpReqAggBuffer) agg;
+
+        log.info("terminatePartial parameters: {}", Arrays.toString(httpReqAggBuffer.container.toArray()));
         List<Object[]> ret = new ArrayList<>(httpReqAggBuffer.container.size());
         ret.addAll(httpReqAggBuffer.container);
         return ret;
