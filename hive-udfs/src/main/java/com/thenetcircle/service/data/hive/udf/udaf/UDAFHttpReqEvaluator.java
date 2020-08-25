@@ -143,8 +143,8 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
 
         log.info("terminatePartial parameters:\n");
 
-        Arrays.stream(httpReqAggBuffer.container.toArray()).forEach(o ->
-            log.info("terminatePartial collection: {}", Arrays.toString((Object[]) o))
+        httpReqAggBuffer.container.forEach(o ->
+            log.info("terminatePartial collection: {}", Arrays.toString(o.toArray()))
         );
         List<Collection<Object>> ret = new ArrayList<>(httpReqAggBuffer.container.size());
         ret.addAll(httpReqAggBuffer.container);
