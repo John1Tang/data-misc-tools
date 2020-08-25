@@ -72,6 +72,7 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
             return ObjectInspectorFactory.getStandardListObjectInspector(inputOI);
 
         } else {
+            log.info("init Mode: {}, all params inspectors: {}, param 1: {}", m, Arrays.toString(parameters), parameters[0].getCategory());
             if (!(parameters[0] instanceof ListObjectInspector)) {
                 //no map aggregation.
                 return ObjectInspectorFactory.getStandardListObjectInspector(inputOI);
