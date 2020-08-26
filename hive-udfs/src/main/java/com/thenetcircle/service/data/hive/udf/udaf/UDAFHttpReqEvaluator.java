@@ -1,25 +1,23 @@
 package com.thenetcircle.service.data.hive.udf.udaf;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
-import com.thenetcircle.service.data.hive.udf.commons.Jsons;
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
-import org.apache.commons.io.output.StringBuilderWriter;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
-import org.apache.hadoop.hive.serde2.io.DoubleWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.*;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
-import org.apache.hadoop.io.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.ASYNC_RESULT_TYPE;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory.getStandardMapObjectInspector;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaIntObjectInspector;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaStringObjectInspector;
@@ -38,12 +36,12 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
      */
     public static ObjectInspector ctxInsp;
     public transient static final List<String> FIELD_NAMES = Arrays.asList("url", "timeout", "headers", "content");
-    private static transient StringObjectInspector urlInsp = javaStringObjectInspector;
-    private static transient IntObjectInspector timeoutInsp = javaIntObjectInspector;
-    private static transient MapObjectInspector headersInsp = getStandardMapObjectInspector(
+    private static final transient StringObjectInspector urlInsp = javaStringObjectInspector;
+    private static final transient IntObjectInspector timeoutInsp = javaIntObjectInspector;
+    private static final transient MapObjectInspector headersInsp = getStandardMapObjectInspector(
             javaStringObjectInspector,
             javaStringObjectInspector);
-    private static transient StringObjectInspector contentInsp = javaStringObjectInspector;
+    private static final transient StringObjectInspector contentInsp = javaStringObjectInspector;
     public transient static final List<ObjectInspector> FIELD_INSPECTORS = Arrays.asList(urlInsp, timeoutInsp, headersInsp, contentInsp);
     public StandardStructObjectInspector objectInspector = ObjectInspectorFactory.getStandardStructObjectInspector(FIELD_NAMES, FIELD_INSPECTORS);
 
@@ -83,9 +81,7 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
         if (m == Mode.PARTIAL1) {
             log.info("#init enter Mode: {}", m);
             inputOI = UDFHelper.addCtxToFirstStructInsp(objectInspector, parameters[0]);
-
-            textConverter = ObjectInspectorConverters.getConverter(parameters[1], urlInsp);
-
+            log.info("#init inputOI inspector: {}", inputOI.getAllStructFieldRefs().stream().map(StructField::getFieldObjectInspector).collect(Collectors.toList()));
             return ObjectInspectorFactory.getStandardListObjectInspector(inputOI);
 
         } else {
@@ -106,17 +102,15 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
 
     class HttpReqAggBuffer extends AbstractAggregationBuffer{
 
-        private Collection<Collection<Object>> container;
+        private Collection<Collection<Object>> container = Lists.newLinkedList();
 
-        public HttpReqAggBuffer() {
-            container = new LinkedHashSet<>();
-        }
     }
 
     @Override
     public AggregationBuffer getNewAggregationBuffer() throws HiveException {
         return new HttpReqAggBuffer();
     }
+
 
     @Override
     public void reset(AggregationBuffer agg) throws HiveException {
@@ -174,7 +168,7 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
 
 
     private void offerCollection(Collection<Object> p, HttpReqAggBuffer httpReqAggBuffer) {
-//       log.info("offerCollection: object:" + Arrays.toString(p));
+
        log.info("offerCollection: object:" + Arrays.toString(p.toArray()));
         // FIXME ClassCast issue
         /**
@@ -187,7 +181,6 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
 
         ArrayList<Object> pCopy =  (ArrayList<Object>)ObjectInspectorUtils.copyToStandardObject(p, inputOI);
         log.info("#offerCollection pCopy:" + Arrays.toString(pCopy.toArray()));
-//        Arrays.stream(pCopy).forEach( o -> log.info("#offerCollection classname: {}",o.getClass()));
         pCopy.stream().forEach( o -> log.info("#offerCollection classname: {}",o.getClass()));
         httpReqAggBuffer.container.add(pCopy);
     }

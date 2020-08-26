@@ -44,8 +44,7 @@ import static java.lang.String.format;
 import static org.apache.hadoop.hive.ql.exec.GroupByOperator.*;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters.Converter;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters.getConverter;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.getPrimitiveWritableObjectInspector;
+import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.*;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils.*;
 import static org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory.getMapTypeInfo;
 import static org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory.getPrimitiveTypeInfoFromJavaPrimitive;
@@ -302,6 +301,9 @@ public class UDFHelper {
         List<String> fieldNames = fieldRefs.stream().map(StructField::getFieldName).collect(Collectors.toList());
         List<ObjectInspector> fieldInsp = fieldRefs.stream().map(StructField::getFieldObjectInspector).collect(Collectors.toList());
 
+        // reassign to java primary type
+        oip = getPrimitiveObjectInspectorFromClass(PrimitiveObjectInspectorUtils.getJavaPrimitiveClassFromObjectInspector(oip));
+        log.info("#addCtxToFirstStructInsp ctx: {}", oip.getClass());
         fieldNames.add(0, "ctx");
         fieldInsp.add(0, oip);
 
