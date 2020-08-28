@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory.getStandardMapObjectInspector;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaIntObjectInspector;
-import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaStringObjectInspector;
+import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.writableIntObjectInspector;
+import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.writableStringObjectInspector;
 
 /**
  * @author john
@@ -36,12 +36,12 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
      */
     public static ObjectInspector ctxInsp;
     public transient static final List<String> FIELD_NAMES = Arrays.asList("url", "timeout", "headers", "content");
-    private static final transient StringObjectInspector urlInsp = javaStringObjectInspector;
-    private static final transient IntObjectInspector timeoutInsp = javaIntObjectInspector;
+    private static final transient StringObjectInspector urlInsp = writableStringObjectInspector;
+    private static final transient IntObjectInspector timeoutInsp = writableIntObjectInspector;
     private static final transient MapObjectInspector headersInsp = getStandardMapObjectInspector(
-            javaStringObjectInspector,
-            javaStringObjectInspector);
-    private static final transient StringObjectInspector contentInsp = javaStringObjectInspector;
+            writableStringObjectInspector,
+            writableStringObjectInspector);
+    private static final transient StringObjectInspector contentInsp = writableStringObjectInspector;
     public transient static final List<ObjectInspector> FIELD_INSPECTORS = Arrays.asList(urlInsp, timeoutInsp, headersInsp, contentInsp);
     public StandardStructObjectInspector objectInspector = ObjectInspectorFactory.getStandardStructObjectInspector(FIELD_NAMES, FIELD_INSPECTORS);
 
@@ -147,11 +147,13 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
 
     @Override
     public void merge(AggregationBuffer agg, Object partial) throws HiveException {
-        log.info("merge start on machine: {}", NetUtil.getNet().getRunInfo());
+        log.info("#merge start on machine: {}", NetUtil.getNet().getRunInfo());
         HttpReqAggBuffer httpReqAggBuffer = (HttpReqAggBuffer) agg;
-        List<ArrayList<Object>> partialResult = (List<ArrayList<Object>>) internalMergeOI.getList(partial);
+        List<Object> partialResult = (List<Object>) internalMergeOI.getList(partial);
+        log.info("#merge partialResult classType: {}", partialResult.getClass());
+        log.info("#merge partialResult[0] classType: {}", partialResult.get(0).getClass());
         if (partialResult != null) {
-            for(ArrayList<Object> i : partialResult) {
+            for(Object i : partialResult) {
                 offerCollection(i, httpReqAggBuffer);
             }
         }
@@ -167,18 +169,7 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     }
 
 
-    private void offerCollection(Collection<Object> p, HttpReqAggBuffer httpReqAggBuffer) {
-
-       log.info("offerCollection: object:" + Arrays.toString(p.toArray()));
-        // FIXME ClassCast issue
-        /**
-         * #offerCollection classname: class org.apache.hadoop.io.LongWritable
-         * 20/08/25 12:01:45 INFO UDAFHttpReqEvaluator: #offerCollection classname: class java.lang.String
-         * 20/08/25 12:01:45 INFO UDAFHttpReqEvaluator: #offerCollection classname: class org.apache.hadoop.io.IntWritable
-         * 20/08/25 12:01:45 INFO UDAFHttpReqEvaluator: #offerCollection classname: class java.util.LinkedHashMap
-         * 20/08/25 12:01:45 INFO UDAFHttpReqEvaluator: #offerCollection classname: class java.lang.String
-         */
-
+    private void offerCollection(Object p, HttpReqAggBuffer httpReqAggBuffer) {
         ArrayList<Object> pCopy =  (ArrayList<Object>)ObjectInspectorUtils.copyToStandardObject(p, inputOI);
         log.info("#offerCollection pCopy:" + Arrays.toString(pCopy.toArray()));
         pCopy.stream().forEach( o -> log.info("#offerCollection classname: {}",o.getClass()));

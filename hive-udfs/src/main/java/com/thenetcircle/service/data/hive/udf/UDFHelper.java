@@ -301,8 +301,8 @@ public class UDFHelper {
         List<String> fieldNames = fieldRefs.stream().map(StructField::getFieldName).collect(Collectors.toList());
         List<ObjectInspector> fieldInsp = fieldRefs.stream().map(StructField::getFieldObjectInspector).collect(Collectors.toList());
 
-        // reassign to java primary type
-        oip = getPrimitiveObjectInspectorFromClass(PrimitiveObjectInspectorUtils.getJavaPrimitiveClassFromObjectInspector(oip));
+        // no more reassign to java primary type
+//        oip = getPrimitiveObjectInspectorFromClass(PrimitiveObjectInspectorUtils.getJavaPrimitiveClassFromObjectInspector(oip));
         log.info("#addCtxToFirstStructInsp ctx: {}", oip.getClass());
         fieldNames.add(0, "ctx");
         fieldInsp.add(0, oip);
