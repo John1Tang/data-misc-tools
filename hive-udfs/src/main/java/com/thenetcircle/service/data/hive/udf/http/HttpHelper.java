@@ -21,6 +21,7 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicHeaderElementIterator;
@@ -167,6 +168,8 @@ public class HttpHelper {
                     }
                     return 60 * 1000;
                 })
+                // default set to retry 3 times
+                .setRetryHandler(new DefaultHttpRequestRetryHandler(3, true))
                 .build();
     }
 
