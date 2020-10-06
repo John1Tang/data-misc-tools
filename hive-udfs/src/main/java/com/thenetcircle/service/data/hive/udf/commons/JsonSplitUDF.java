@@ -11,40 +11,55 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 
 @Description(name="json_split",
         value = "_FUNC_(json) - Returns a array of JSON strings from a JSON Array")
 public class JsonSplitUDF extends GenericUDF {
+
+    private Logger log = LoggerFactory.getLogger(JsonSplitUDF.class);
     private StringObjectInspector stringInspector;
 
-    public ArrayList<Object[]> splitJsonString(String jsonString) throws JsonProcessingException, IOException {
-        ObjectMapper om = new ObjectMapper();
-        ArrayList<Object> root = (ArrayList<Object>) om.readValue(jsonString, ArrayList.class);
-        ArrayList<Object[]> json = new ArrayList<Object[]>(root.size());
-        for (int i=0; i<root.size(); i++){
-            if (root.get(i).getClass() == String.class){
-                json.add(new Object[]{i, root.get(i)});
-            } else {
-                json.add(new Object[]{i, om.writeValueAsString(root.get(i))});
-            }
+    private static final ObjectMapper om = new ObjectMapper();
+    private LongAdder longAdder = new LongAdder();
+
+
+    public Object[] parseJsonStr(LongAdder longAdder, Object node) {
+        longAdder.increment();
+        if (node instanceof String) {
+            return new Object[] {longAdder.intValue(), node};
         }
-        return json;
+        try {
+            return new Object[] {longAdder.intValue(), om.writeValueAsString(node) };
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new Object[] {};
     }
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
         try {
             String jsonString = this.stringInspector.getPrimitiveJavaObject(arguments[0].get());
-            return splitJsonString(jsonString);
-        } catch( JsonProcessingException jsonProc) {
+
+            ArrayList<Object> root = om.readValue(jsonString, ArrayList.class);
+
+            longAdder.decrement();
+            return root.stream().map(node -> parseJsonStr(longAdder, node))
+                    .collect(Collectors.toCollection(ArrayList::new));
+
+        } catch(IOException jsonProc) {
             throw new HiveException(jsonProc);
-        } catch (IOException e) {
-            throw new HiveException(e);
         } catch (NullPointerException npe){
             return null;
+        }finally {
+            log.info("finally done for evaluate {}", longAdder.intValue());
         }
 
     }
@@ -68,12 +83,11 @@ public class JsonSplitUDF extends GenericUDF {
         outputColumns.add("row_id");
         outputColumns.add("json_string");
 
-        ArrayList<ObjectInspector> outputTypes = new ArrayList<ObjectInspector>();
+        ArrayList<ObjectInspector> outputTypes = new ArrayList<>();
         outputTypes.add(PrimitiveObjectInspectorFactory.javaIntObjectInspector);
         outputTypes.add(PrimitiveObjectInspectorFactory.javaStringObjectInspector);
         return ObjectInspectorFactory.getStandardListObjectInspector
                 (ObjectInspectorFactory.getStandardStructObjectInspector( outputColumns, outputTypes));
 
     }
-
 }

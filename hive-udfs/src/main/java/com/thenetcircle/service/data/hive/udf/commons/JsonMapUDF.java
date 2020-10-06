@@ -15,29 +15,31 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspe
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Description(name="json_map",
         value = "_FUNC_(json) - Returns a map of key-value pairs from a JSON object")
 public class JsonMapUDF extends GenericUDF {
+
     private StringObjectInspector stringInspector;
+
+    private static final ObjectMapper om = new ObjectMapper();
+
+    private static final TypeReference<HashMap<String, Object>> mapType = new TypeReference<HashMap<String, Object>>() {};
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
         try {
             String jsonString = this.stringInspector.getPrimitiveJavaObject(arguments[0].get());
 
-            ObjectMapper om = new ObjectMapper();
-            HashMap<String, String> map = new HashMap<String, String>();
-            TypeReference<HashMap<String, Object>> mapType = new TypeReference<HashMap<String, Object>>() {};
-            HashMap<String, Object> root = (HashMap<String, Object>) om.readValue(jsonString, mapType);
-            for (String s: root.keySet()){
-                map.put(s, root.get(s).toString());
-            }
-            return map;
-        } catch( JsonProcessingException jsonProc) {
+            HashMap<String, Object> root = om.readValue(jsonString, mapType);
+
+            return root.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString()));
+
+        } catch(IOException jsonProc) {
             throw new HiveException(jsonProc);
-        } catch (IOException e) {
-            throw new HiveException(e);
         } catch (NullPointerException npe){
             return null;
         }
