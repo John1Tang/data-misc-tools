@@ -2,11 +2,16 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.session.SessionState;
+import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableVoidObjectInspector;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HeaderElementIterator;
@@ -14,6 +19,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -30,12 +36,12 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
+import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgPrimitive;
+import static com.thenetcircle.service.data.hive.udf.UDFHelper.getConstantIntValue;
+import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.*;
+import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.runtimeErr;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory.getStandardMapObjectInspector;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.*;
@@ -44,6 +50,13 @@ public class HttpHelper {
 
     static HttpClientContext hcContext = HttpClientContext.create();
     static RespHandler respHandler = new RespHandler();
+
+    transient StringObjectInspector urlInsp;
+    transient MapObjectInspector headersInsp;
+    transient StringObjectInspector contentInsp;
+
+    private int timeout;
+    private int coreSize;
 
     public static Map<String, String> headers2Map(Header... headers) {
         Map<String, String> re = new HashMap<>();
@@ -171,50 +184,5 @@ public class HttpHelper {
                 // default set to retry 3 times
                 .setRetryHandler(new DefaultHttpRequestRetryHandler(3, true))
                 .build();
-    }
-
-
-}
-
-final class RespHandler implements ResponseHandler<Object[]> {
-
-    private transient Object ctx;
-
-    public RespHandler() {
-    }
-
-    public RespHandler(Object ctx) {
-        this.ctx = ctx;
-    }
-
-    @Override
-    public Object[] handleResponse(
-            final HttpResponse response) throws ClientProtocolException, IOException {
-        return new Object[]{
-                response.getStatusLine().getStatusCode(),
-                headers2Map(response.getAllHeaders()),
-                EntityUtils.toString(response.getEntity()) ,
-                ctx};
-    }
-}
-
-
-
- interface IHttpClientCallback extends FutureCallback<Object[]> {
-
-    @Override
-    default void failed(final Exception ex) {
-        // do something
-    }
-
-    @Override
-    default void completed(final Object[] result) {
-        // do something
-        System.out.println(Thread.currentThread().getName() + result[0]);
-    }
-
-    @Override
-    default void cancelled() {
-        // do something
     }
 }
