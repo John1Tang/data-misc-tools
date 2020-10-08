@@ -4,6 +4,9 @@ import org.apache.http.util.Asserts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @author john
+ */
 public class MiscUtils {
 
     private static final Logger log = LoggerFactory.getLogger(MiscUtils.class);

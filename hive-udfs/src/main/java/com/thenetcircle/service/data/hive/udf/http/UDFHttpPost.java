@@ -113,15 +113,13 @@ public class UDFHttpPost extends GenericUDF {
             }
         }
 
-        return sendAndGetHiveResult(hc, post);
+        return HttpHelper.getInstance().sendAndGetHiveResult(post);
     }
-
-    private transient CloseableHttpClient hc = HttpClientBuilder.create().build();
 
     @Override
     public void close() throws IOException {
         super.close();
-        if (hc != null) hc.close();
+        HttpHelper.getInstance().closeHttpClient();
     }
 
     @Override

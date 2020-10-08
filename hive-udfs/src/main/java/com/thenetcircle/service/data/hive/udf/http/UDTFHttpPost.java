@@ -20,6 +20,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
@@ -114,16 +115,18 @@ public class UDTFHttpPost extends UDTFExt {
             }
         }
 
-        return sendAndGetHiveResult(hc, post);
+        return HttpHelper.getInstance().sendAndGetHiveResult(post);
     }
 
-    private transient CloseableHttpClient hc = HttpClientBuilder.create().build();
 
     @Override
     public void close() throws HiveException {
         log.info("..... \n\n\n close httpclient \n\n\n");
-        HttpHelper.close(hc);
-        hc = null;
+        try {
+            HttpHelper.getInstance().closeHttpClient();
+        } catch (IOException e) {
+            throw new HiveException(e);
+        }
     }
 
 }

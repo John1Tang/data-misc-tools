@@ -19,6 +19,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Map;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.*;
@@ -38,7 +39,6 @@ public class UDTFHttpGet extends UDTFExt {
     private transient MapObjectInspector headersInsp = null;
     private transient RequestConfig rc = null;
     private transient PrimitiveObjectInspector.PrimitiveCategory[] inputTypes = new PrimitiveObjectInspector.PrimitiveCategory[2];
-    private transient CloseableHttpClient hc = null;
 
     @Override
     public StructObjectInspector _initialize(ObjectInspector[] args) throws UDFArgumentException {
@@ -83,7 +83,6 @@ public class UDTFHttpGet extends UDTFExt {
 
     @Override
     public Object[] evaluate(Object[] args, int start) {
-        if (hc == null) hc = HttpClientBuilder.create().build();
 
         String urlStr = this.urlInsp.getPrimitiveJavaObject(args[start + 0]);
         if (StringUtils.isBlank(urlStr)) {
@@ -98,13 +97,16 @@ public class UDTFHttpGet extends UDTFExt {
             get.setHeaders(map2Headers(headersMap));
         }
 
-        return sendAndGetHiveResult(hc, get);
+        return HttpHelper.getInstance().sendAndGetHiveResult(get);
     }
 
     @Override
     public void close() throws HiveException {
         log.info("..... \n\n\n close httpclient \n\n\n");
-        HttpHelper.close(hc);
-        hc = null;
+        try {
+            HttpHelper.getInstance().closeHttpClient();
+        } catch (IOException e) {
+            throw new HiveException(e);
+        }
     }
 }

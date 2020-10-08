@@ -91,21 +91,16 @@ public class UDFHttpGet extends GenericUDF {
             headersMap = (Map<String, String>) headersInsp.getMap(arg2.get());
         }
 
-        if (hc == null) hc = HttpClientBuilder.create().build();
         HttpGet get = reqGet(urlStr, headersMap);
         get.setConfig(rc);
-        return sendAndGetHiveResult(hc, get);
+        return HttpHelper.getInstance().sendAndGetHiveResult(get);
     }
 
-    private CloseableHttpClient hc = null;
 
     @Override
     public void close() throws IOException {
         super.close();
-        if (hc != null) {
-            hc.close();
-            hc = null;
-        }
+        HttpHelper.getInstance().closeHttpClient();
     }
 
     @Override
