@@ -34,6 +34,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -215,8 +216,7 @@ public class HttpHelper {
         if (null == futureRequestExecutionService){
             synchronized (this) {
                 if (null == futureRequestExecutionService) {
-                    hc = HttpHelper.getInstance().getHttpClient();
-                    futureRequestExecutionService = new FutureRequestExecutionService(hc, threadPoolExecutor);
+                    futureRequestExecutionService = new FutureRequestExecutionService(HttpHelper.getInstance().getHttpClient(), threadPoolExecutor);
                 }
             }
         }
@@ -247,12 +247,12 @@ public class HttpHelper {
     }
 
     public void closeHttpClient() throws IOException {
-        if (hc == null) {
+        CloseableHttpClient httpClient = HttpHelper.getInstance().getHttpClient();
+        if (httpClient == null) {
             return;
         }
         try {
-            hc.close();
-            hc = null;
+            httpClient.close();
         } catch (IOException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             throw new IOException(e);
@@ -262,6 +262,9 @@ public class HttpHelper {
     public void closeFutureReqExecSvc() throws HiveException {
         try {
             futureRequestExecutionService.close();
+            // in case once in second execution found out closed state is true
+            // and report illegal state
+            futureRequestExecutionService = null;
         } catch (IOException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             throw new HiveException(e);

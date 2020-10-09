@@ -12,7 +12,6 @@ import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.LongAccumulator;
@@ -70,13 +69,12 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         processCounter.accumulate(1);
 
         ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
-        log.info("\n--- start process --- \nwith ctx: {}\npool size: {}, active: {}", ctx, threadPoolExecutor.getPoolSize(), threadPoolExecutor.getActiveCount());
+        log.info("\n--- start process --- \nwith ctx: {}\ncorePool size: {}, active: {}", ctx, threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount());
 
         int start = 0;
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         HttpHelper.getInstance().executeFutureReq(ctx, httpBaseReq, resultQueue);
-
 
         while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getCorePoolSize()) {
             log.info("\n\n -- process() -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
@@ -142,14 +140,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         }
 
         log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), forwardCounter.longValue());
-        try {
-            HttpHelper.getInstance().closeHttpClient();
-        } catch (IOException e) {
-            throw new HiveException(e);
-        }
-        threadPoolExecutor.shutdown();
+        // this closure will close executorService & httpclient
         HttpHelper.getInstance().closeFutureReqExecSvc();
-
     }
 
 
