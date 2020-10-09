@@ -35,10 +35,7 @@ import org.apache.http.util.EntityUtils;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgPrimitive;
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.getConstantIntValue;
@@ -47,13 +44,16 @@ import static org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFacto
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaIntObjectInspector;
 import static org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory.javaStringObjectInspector;
 
+/**
+ * @author john
+ */
 public class HttpHelper {
 
-    static HttpClientContext hcContext = HttpClientContext.create();
+    static HttpClientContext hcContext;
     volatile RequestConfig rc;
     transient volatile ThreadPoolExecutor threadPoolExecutor;
     transient volatile FutureRequestExecutionService futureRequestExecutionService;
-    transient volatile CloseableHttpClient hc = getHttpClient();
+    transient volatile CloseableHttpClient hc;
 
     transient StringObjectInspector urlInsp;
     transient MapObjectInspector headersInsp;
@@ -62,9 +62,12 @@ public class HttpHelper {
 
     private int timeout;
     private int coreSize;
-    private transient final int coreNum = Runtime.getRuntime().availableProcessors();
+    private transient final int coreNum;
 
-    private HttpHelper(){}
+    private HttpHelper(){
+        hcContext = HttpClientContext.create();
+        coreNum = Runtime.getRuntime().availableProcessors();
+    }
 
     private static final Supplier<HttpHelper> instance = Suppliers.memoize(HttpHelper::new);
 
@@ -200,8 +203,8 @@ public class HttpHelper {
         if (null == threadPoolExecutor) {
             synchronized (this) {
                 if (null == threadPoolExecutor) {
-                    threadPoolExecutor = new ThreadPoolExecutor(coreSize, coreSize * 2, 8, TimeUnit.SECONDS,
-                            new LinkedBlockingDeque<>(1000), new NamedThreadFactory(name));;
+                    threadPoolExecutor = new ThreadPoolExecutor(coreSize * 2, coreSize * 20, 8, TimeUnit.SECONDS,
+                            new LinkedBlockingDeque<>(1000), new NamedThreadFactory(name), new ThreadPoolExecutor.CallerRunsPolicy());
                 }
             }
         }
@@ -212,6 +215,7 @@ public class HttpHelper {
         if (null == futureRequestExecutionService){
             synchronized (this) {
                 if (null == futureRequestExecutionService) {
+                    hc = HttpHelper.getInstance().getHttpClient();
                     futureRequestExecutionService = new FutureRequestExecutionService(hc, threadPoolExecutor);
                 }
             }
@@ -220,7 +224,7 @@ public class HttpHelper {
     }
 
     public void executeFutureReq(Object ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
-        getFutureReqExecSvc().execute(
+        HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 hcContext,
                 new RespHandler(ctx),
