@@ -96,7 +96,9 @@ public class UDFHelper {
     }
 
     public static Map deferedObj2Map(GenericUDF.DeferredObject deferredObj, MapObjectInspector mapInsp, StandardMapObjectInspector retInsp) throws HiveException {
-        if (deferredObj == null || mapInsp == null) return new HashMap();
+        if (deferredObj == null || mapInsp == null) {
+            return new HashMap();
+        }
 
         Object _obj = deferredObj.get();
         return obj2Map(_obj, mapInsp, retInsp);
@@ -106,7 +108,9 @@ public class UDFHelper {
         Map map = new HashMap();
         Map eachMap = mapInsp.getMap(_obj);
 
-        if (eachMap == null) return map;
+        if (eachMap == null) {
+            return map;
+        }
 
         for (Object entry : eachMap.entrySet()) {
             Map.Entry kv = (Map.Entry) entry;
@@ -122,7 +126,9 @@ public class UDFHelper {
                                      ObjectInspector[] args,
                                      int min,
                                      int max) throws UDFArgumentLengthException {
-        if (args.length >= min && args.length <= max) return;
+        if (args.length >= min && args.length <= max) {
+            return;
+        }
         throw new UDFArgumentLengthException(
                 format("%s requires %d..%d argument(s), got %d", funcName, min, max, args.length)
         );
@@ -267,8 +273,9 @@ public class UDFHelper {
     }
 
     public static ObjectInspector checkContext(ObjectInspector input) throws UDFArgumentTypeException {
-        if (input == null)
+        if (input == null) {
             throw new UDFArgumentTypeException(0, "context parameter must be a struct! ObjectInspeector is null!!");
+        }
 
         if (input instanceof VoidObjectInspector) {
             return null;
@@ -278,21 +285,14 @@ public class UDFHelper {
     }
 
     public static StructObjectInspector addContextToStructInsp(StructObjectInspector soip, ObjectInspector oip) {
-        if (soip == null || oip == null) {
-            return null;
-        }
-
-        List<? extends StructField> fieldRefs = soip.getAllStructFieldRefs();
-        List<String> fieldNames = fieldRefs.stream().map(StructField::getFieldName).collect(Collectors.toList());
-        List<ObjectInspector> fieldInsp = fieldRefs.stream().map(StructField::getFieldObjectInspector).collect(Collectors.toList());
-
-        fieldNames.add("ctx");
-        fieldInsp.add(oip);
-
-        return ObjectInspectorFactory.getStandardStructObjectInspector(fieldNames, fieldInsp);
+        return addContextToStructInsp(soip, oip, true);
     }
 
     public static StructObjectInspector addCtxToFirstStructInsp(StructObjectInspector soip, ObjectInspector oip) {
+        return addContextToStructInsp(soip, oip, false);
+    }
+
+    public static StructObjectInspector addContextToStructInsp(StructObjectInspector soip, ObjectInspector oip, boolean addToTail) {
         if (soip == null || oip == null) {
             return null;
         }
@@ -302,11 +302,15 @@ public class UDFHelper {
         List<ObjectInspector> fieldInsp = fieldRefs.stream().map(StructField::getFieldObjectInspector).collect(Collectors.toList());
 
         // no more reassign to java primary type
-//        oip = getPrimitiveObjectInspectorFromClass(PrimitiveObjectInspectorUtils.getJavaPrimitiveClassFromObjectInspector(oip));
         log.info("#addCtxToFirstStructInsp ctx: {}", oip.getClass());
-        fieldNames.add(0, "ctx");
-        fieldInsp.add(0, oip);
 
+        if (addToTail) {
+            fieldNames.add("ctx");
+            fieldInsp.add(oip);
+        } else {
+            fieldNames.add(0, "ctx");
+            fieldInsp.add(0, oip);
+        }
         return ObjectInspectorFactory.getStandardStructObjectInspector(fieldNames, fieldInsp);
     }
 
@@ -398,8 +402,9 @@ public class UDFHelper {
     }
 
     public static PrimitiveMethodBridge getMethodBridge(Class clz, Method md, ObjectInspector[] argOIs) throws UDFArgumentException {
-        if (md == null)
+        if (md == null) {
             throw new UDFArgumentException(format("class: %s or methodName: %s is null", clz, md));
+        }
         try {
 
             Parameter[] params = md.getParameters();
@@ -484,7 +489,9 @@ public class UDFHelper {
     }
 
     public static ObjectInspector clz2ObjInsp(Class clz) {
-        if (clz == null || Void.class.equals(clz)) return PrimitiveObjectInspectorFactory.javaVoidObjectInspector;
+        if (clz == null || Void.class.equals(clz)) {
+            return PrimitiveObjectInspectorFactory.javaVoidObjectInspector;
+        }
         if (clz.isPrimitive() || Date.class.isAssignableFrom(clz)) {
             return getPrimitiveJavaObjectInspector(getTypeEntryFromPrimitiveJava(clz).primitiveCategory);
         }
@@ -499,11 +506,14 @@ public class UDFHelper {
 
     public static ObjectInspector retType2ObjInsp(Method md) {
         Class clz = md.getReturnType();
-        if (clz == null || Void.class.equals(clz)) return PrimitiveObjectInspectorFactory.javaVoidObjectInspector;
+        if (clz == null || Void.class.equals(clz)) {
+            return PrimitiveObjectInspectorFactory.javaVoidObjectInspector;
+        }
 
         PrimitiveTypeEntry typeEntry = getTypeEntryFromPrimitiveJava(clz);
-        if (typeEntry != null)
+        if (typeEntry != null) {
             return getPrimitiveJavaObjectInspector(typeEntry.primitiveCategory);
+        }
 
         if (clz.isArray()) {
             return ObjectInspectorFactory.getStandardListObjectInspector(
@@ -515,12 +525,16 @@ public class UDFHelper {
             if (genericRetType instanceof ParameterizedType) {
                 ParameterizedType parameterizedType = (ParameterizedType) genericRetType;
                 Type[] actualTypeArgs = parameterizedType.getActualTypeArguments();
-                if (ArrayUtils.isEmpty(actualTypeArgs)) return null;
+                if (ArrayUtils.isEmpty(actualTypeArgs)) {
+                    return null;
+                }
                 Type elementType = actualTypeArgs[0];
                 if (elementType instanceof Class) {
                     Class elementClz = (Class) elementType;
                     PrimitiveTypeEntry _typeEntry = getTypeEntryFromPrimitiveJava(elementClz);
-                    if (_typeEntry == null) return null;
+                    if (_typeEntry == null) {
+                        return null;
+                    }
                     AbstractPrimitiveJavaObjectInspector elementObjInsp = getPrimitiveJavaObjectInspector(_typeEntry.primitiveCategory);
                     return elementObjInsp != null ? ObjectInspectorFactory.getStandardListObjectInspector(elementObjInsp) : null;
                 }
@@ -532,7 +546,9 @@ public class UDFHelper {
             if (genericRetType instanceof ParameterizedType) {
                 ParameterizedType parameterizedType = (ParameterizedType) genericRetType;
                 Type[] actualTypeArgs = parameterizedType.getActualTypeArguments();
-                if (ArrayUtils.isEmpty(actualTypeArgs)) return null;
+                if (ArrayUtils.isEmpty(actualTypeArgs)) {
+                    return null;
+                }
 
                 Type keyType = actualTypeArgs[0];
                 Type valType = actualTypeArgs[0];
@@ -566,7 +582,9 @@ public class UDFHelper {
     }
 
     public static TypeInfo typeToTypeInfo(Type t) {
-        if (t == Object.class) return TypeInfoFactory.unknownTypeInfo;
+        if (t == Object.class) {
+            return TypeInfoFactory.unknownTypeInfo;
+        }
 
         if (t instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) t;
@@ -627,12 +645,17 @@ public class UDFHelper {
     }
 
     public static TypeInfo getParamentTypeInfo(Parameter param) {
-        if (param == null) return null;
+        if (param == null) {
+            return null;
+        }
+
         return typeToTypeInfo(param.getType());
     }
 
     public final static String what(Object obj) {
-        if (obj == null) return "[null]";
+        if (obj == null) {
+            return "[null]";
+        }
         return format("%s:\t%s", obj.getClass().getSimpleName(), obj);
     }
 
@@ -704,7 +727,9 @@ public class UDFHelper {
     }
 
     public static Object normaliz(ObjectInspector objInsp, Object data) {
-        if (objInsp == null || data == null) return null;
+        if (objInsp == null || data == null) {
+            return null;
+        }
 
         switch (objInsp.getCategory()) {
             case PRIMITIVE:
