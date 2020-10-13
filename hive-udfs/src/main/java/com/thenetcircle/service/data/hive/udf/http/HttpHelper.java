@@ -247,12 +247,13 @@ public class HttpHelper {
     }
 
     public void closeHttpClient() throws IOException {
-        CloseableHttpClient httpClient = HttpHelper.getInstance().getHttpClient();
-        if (httpClient == null) {
+        hc = HttpHelper.getInstance().getHttpClient();
+        if (hc == null) {
             return;
         }
         try {
-            httpClient.close();
+            hc.close();
+            hc = null;
         } catch (IOException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             throw new IOException(e);
