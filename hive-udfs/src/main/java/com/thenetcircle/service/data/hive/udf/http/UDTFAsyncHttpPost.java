@@ -25,8 +25,9 @@ public class UDTFAsyncHttpPost extends UDTFAsyncBaseHttpReq {
     }
 
     @Override
-    void setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException {
+    boolean setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException {
         HttpHelper.getInstance().setContent(argInsps, 4, NAME);
+        return true;
     }
 
     @Override

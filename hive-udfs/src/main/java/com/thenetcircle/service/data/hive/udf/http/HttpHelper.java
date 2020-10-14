@@ -34,9 +34,11 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Field;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgPrimitive;
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.getConstantIntValue;
@@ -337,17 +339,16 @@ public class HttpHelper {
      */
     HttpRequestBase setHttpPost(Object[] args, int idxUrl, int idxHeader, int idxContent) throws HiveException {
         String url = getUrl(args[idxUrl]);
-        return setHttpReqBase(args, idxUrl, idxHeader, idxContent, new HttpPost(url));
+        return setHttpReqBase(args, idxHeader, idxContent, new HttpPost(url));
     }
 
     HttpRequestBase setHttpGet(Object[] args, int idxUrl, int idxHeader) throws HiveException {
         String url = getUrl(args[idxUrl]);
-        return setHttpReqBase(args, idxUrl, idxHeader, 0, new HttpGet(url));
+        return setHttpReqBase(args, idxHeader, 0, new HttpGet(url));
     }
 
 
-
-    private HttpRequestBase setHttpReqBase(Object[] args, int idxUrl, int idxHeader, int idxContent, HttpRequestBase httpRequestBase) throws HiveException {
+    private HttpRequestBase setHttpReqBase(Object[] args, int idxHeader, int idxContent, HttpRequestBase httpRequestBase) throws HiveException {
 
         httpRequestBase.setConfig(rc);
         Header[] headers;

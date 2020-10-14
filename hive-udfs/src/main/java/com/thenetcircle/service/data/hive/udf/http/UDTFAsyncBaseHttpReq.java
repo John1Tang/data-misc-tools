@@ -38,7 +38,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
     @Override
     public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
-        checkArgsSize(NAME, argInsps, 5, 6);
+        checkArgsSize(NAME, argInsps, 4, 6);
 
         checkArgPrimitive(NAME, argInsps, 1);
 
@@ -46,9 +46,9 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpHelper.getInstance().setTimeout(argInsps, 2, NAME);
         HttpHelper.getInstance().setReqHeader(argInsps, 3);
 
-        setBody(argInsps);
+        boolean hasBody = setBody(argInsps);
 
-        HttpHelper.getInstance().setCoreSize(argInsps, 5, NAME);
+        HttpHelper.getInstance().setCoreSize(argInsps, 4 + (hasBody ? 1 : 0), NAME);
 
         HttpHelper.getInstance().getThreadPoolExecutor(NAME);
 
@@ -60,7 +60,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
      * @param argInsps
      * @throws UDFArgumentTypeException
      */
-    abstract void setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException;
+    abstract boolean setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException;
 
     @Override
     public void process(Object[] args) throws HiveException {

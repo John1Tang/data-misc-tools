@@ -27,8 +27,8 @@ public class UDTFAsyncHttpGet extends UDTFAsyncBaseHttpReq {
     }
 
     @Override
-    void setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException {
-        // not need
+    boolean setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException {
+        return false;
     }
 
     @Override
