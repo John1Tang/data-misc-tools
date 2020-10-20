@@ -279,52 +279,56 @@ public class HttpHelper {
     }
 
     public void setCoreSize(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
-        if (args.length > idx) {
-            checkArgPrimitive(udfName, args, idx);
-            coreSize = Optional.ofNullable(getConstantIntValue(udfName, args, idx)).orElse(coreNum);
-            if (coreSize < 1 || coreSize > coreNum) {
-                coreSize = coreNum;
-            }
+        if (args.length < idx) {
+            coreSize = coreNum;
             return;
         }
-        coreSize = coreNum;
+        checkArgPrimitive(udfName, args, idx);
+        coreSize = Optional.ofNullable(getConstantIntValue(udfName, args, idx)).orElse(coreNum);
+        if (coreSize < 1 || coreSize > coreNum) {
+            coreSize = coreNum;
+        }
+
     }
 
 
     public void setContent(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
-        if (args.length > idx) {
-            checkArgPrimitive(udfName, args, idx);
-            ObjectInspector contentObj = args[idx];
-            if (!(args[idx] instanceof StringObjectInspector)) {
-                throw new UDFArgumentTypeException(idx, "content must be string");
-            }
-            this.contentInsp = (StringObjectInspector) contentObj;
+        if (args.length < idx) {
+            return;
         }
+        checkArgPrimitive(udfName, args, idx);
+        ObjectInspector contentObj = args[idx];
+        if (!(args[idx] instanceof StringObjectInspector)) {
+            throw new UDFArgumentTypeException(idx, "content must be string");
+        }
+        this.contentInsp = (StringObjectInspector) contentObj;
     }
 
     public void setTimeout(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
-        if (args.length > idx) {
-            checkArgPrimitive(udfName, args, idx);
-            timeout = Optional.ofNullable(getConstantIntValue(udfName, args, idx)).orElse(0);
-            rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
+        if (args.length < idx) {
+            return;
         }
+        checkArgPrimitive(udfName, args, idx);
+        timeout = Optional.ofNullable(getConstantIntValue(udfName, args, idx)).orElse(0);
+        rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
     }
 
     public void setReqHeader(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
-        if (args.length > idx) {
-            ObjectInspector headerInsp = args[idx];
-            if (headerInsp instanceof WritableVoidObjectInspector) {
-                headersInsp = null;
-            } else {
-                if (!(headerInsp instanceof MapObjectInspector)) {
-                    throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object> or null:\n\t" + args[idx]);
-                }
-                MapObjectInspector moi = (MapObjectInspector) headerInsp;
-                if (!(moi.getMapKeyObjectInspector() instanceof StringObjectInspector)) {
-                    throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object>");
-                }
-                headersInsp = moi;
+        if (args.length < idx) {
+            return;
+        }
+        ObjectInspector headerInsp = args[idx];
+        if (headerInsp instanceof WritableVoidObjectInspector) {
+            headersInsp = null;
+        } else {
+            if (!(headerInsp instanceof MapObjectInspector)) {
+                throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object> or null:\n\t" + args[idx]);
             }
+            MapObjectInspector moi = (MapObjectInspector) headerInsp;
+            if (!(moi.getMapKeyObjectInspector() instanceof StringObjectInspector)) {
+                throw new UDFArgumentTypeException(idx, "header parameter must be map<string, object>");
+            }
+            headersInsp = moi;
         }
     }
 

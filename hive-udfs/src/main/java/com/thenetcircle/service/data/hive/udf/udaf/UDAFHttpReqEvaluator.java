@@ -172,7 +172,7 @@ public class UDAFHttpReqEvaluator extends GenericUDAFEvaluator
     private void offerCollection(Object p, HttpReqAggBuffer httpReqAggBuffer) {
         ArrayList<Object> pCopy =  (ArrayList<Object>)ObjectInspectorUtils.copyToStandardObject(p, inputOI);
         log.info("#offerCollection pCopy:" + Arrays.toString(pCopy.toArray()));
-        pCopy.stream().forEach( o -> log.info("#offerCollection classname: {}",o.getClass()));
+        pCopy.forEach(o -> log.info("#offerCollection classname: {}",o.getClass()));
         httpReqAggBuffer.container.add(pCopy);
     }
 
