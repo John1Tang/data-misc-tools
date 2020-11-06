@@ -346,6 +346,11 @@ public class HttpHelper {
         return setHttpReqBase(args, idxHeader, idxContent, new HttpPost(url));
     }
 
+    HttpRequestBase setHttpDelete(Object[] args, int idxUrl, int idxHeader, int idxContent) throws HiveException {
+        String url = getUrl(args[idxUrl]);
+        return setHttpReqBase(args, idxHeader, idxContent, new HttpDelete(url));
+    }
+
     HttpRequestBase setHttpGet(Object[] args, int idxUrl, int idxHeader) throws HiveException {
         String url = getUrl(args[idxUrl]);
         return setHttpReqBase(args, idxHeader, 0, new HttpGet(url));
