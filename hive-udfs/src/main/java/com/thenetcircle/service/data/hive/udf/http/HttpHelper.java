@@ -368,9 +368,9 @@ public class HttpHelper {
             httpRequestBase.setHeaders(headers);
         }
 
-        List<String> methodList = Arrays.asList("post", "patch");
+        List<String> methodList = Arrays.asList("get");
         String methodName = httpRequestBase.getMethod();
-        if (methodList.stream().anyMatch(e -> e.equalsIgnoreCase(methodName))) {
+        if (methodList.stream().noneMatch(e -> e.equalsIgnoreCase(methodName))) {
             if (args.length > idxContent) {
                 String content = contentInsp.getPrimitiveJavaObject(args[idxContent]);
                 try {
