@@ -64,7 +64,7 @@ public class TncJdbcRecordWriter implements RecordWriter {
                 if (conn != null) conn.close();
                 conn = dbcpDataSource.getConnection();
                 boolean autoCommit = conf.getBoolean("hive.sql.auto.commit", true);
-                log.info(format("\n\t set autoCommit to %d", autoCommit));
+                log.info(format("\n\t set autoCommit to %b", autoCommit));
                 conn.setAutoCommit(false);
                 int txLevel = conf.getInt("hive.sql.transaction.level", conn.getTransactionIsolation());
                 log.info(format("\n\t set txlevel to %d", txLevel));
