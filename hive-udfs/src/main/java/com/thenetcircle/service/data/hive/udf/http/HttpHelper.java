@@ -279,7 +279,7 @@ public class HttpHelper {
     }
 
     public void setCoreSize(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
-        if (args.length < idx) {
+        if (args.length - 1 < idx) {
             coreSize = coreNum;
             return;
         }
@@ -293,7 +293,7 @@ public class HttpHelper {
 
 
     public void setContent(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
-        if (args.length < idx) {
+        if (args.length - 1 < idx) {
             return;
         }
         checkArgPrimitive(udfName, args, idx);
@@ -305,7 +305,7 @@ public class HttpHelper {
     }
 
     public void setTimeout(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
-        if (args.length < idx) {
+        if (args.length - 1 < idx) {
             return;
         }
         checkArgPrimitive(udfName, args, idx);
@@ -314,7 +314,7 @@ public class HttpHelper {
     }
 
     public void setReqHeader(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
-        if (args.length < idx) {
+        if (args.length - 1 < idx) {
             return;
         }
         ObjectInspector headerInsp = args[idx];
