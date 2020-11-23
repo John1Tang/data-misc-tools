@@ -368,7 +368,7 @@ public class HttpHelper {
             httpRequestBase.setHeaders(headers);
         }
 
-        List<String> methodList = Arrays.asList("get");
+        List<String> methodList = Arrays.asList("get", "delete");
         String methodName = httpRequestBase.getMethod();
         if (methodList.stream().noneMatch(e -> e.equalsIgnoreCase(methodName))) {
             if (args.length > idxContent) {
