@@ -26,8 +26,7 @@ public class UDTFAsyncHttpDelete extends UDTFAsyncBaseHttpReq {
 
     @Override
     boolean setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException {
-        HttpHelper.getInstance().setContent(argInsps, 4, NAME);
-        return true;
+        return false;
     }
 
     @Override
