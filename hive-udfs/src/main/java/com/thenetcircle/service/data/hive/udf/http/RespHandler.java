@@ -13,9 +13,11 @@ final class RespHandler implements ResponseHandler<ThreadLocal<Object[]>> {
 
     private transient ThreadLocal<Object> ctx;
 
-    private transient static ThreadLocal<Object[]> resp;
+    private transient ThreadLocal<Object[]> resp;
 
     public RespHandler(Object ctx) {
+        this.ctx = new ThreadLocal<>();
+        this.resp = new ThreadLocal<>();
         this.ctx.set(ctx);
     }
 
@@ -26,7 +28,7 @@ final class RespHandler implements ResponseHandler<ThreadLocal<Object[]>> {
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
                 EntityUtils.toString(response.getEntity()) ,
-                ctx});
+                ctx.get()});
         return resp;
     }
 }
