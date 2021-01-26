@@ -66,7 +66,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         processCounter.accumulate(1);
 
         ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
-        log.info("\n--- start process --- \nwith ctx: {}\ncorePool size: {}, active: {}", ctx, threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount());
+        log.info("\n--- start process --- \nwith ctx: {}\ncorePool size: {}, active: {}",
+                ctx, threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount());
 
         int start = 0;
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
@@ -90,7 +91,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
     }
 
     public void executeFutureReq1(Object ctx, HttpRequestBase httpRequestBase) {
-        HttpHelper.getInstance();
+        log.info("submit url: {}, ctx: {}", httpRequestBase.getURI(), ctx);
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 HttpHelper.getHcContext(),
