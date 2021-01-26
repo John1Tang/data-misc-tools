@@ -11,13 +11,11 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map
 
 final class RespHandler implements ResponseHandler<ThreadLocal<Object[]>> {
 
-    private transient ThreadLocal<Object> ctx;
+    private transient ThreadLocal<Object> ctx = new ThreadLocal<>();;
 
-    private transient ThreadLocal<Object[]> resp;
+    private transient ThreadLocal<Object[]> resp = new ThreadLocal<>();;
 
     public RespHandler(Object ctx) {
-        this.ctx = new ThreadLocal<>();
-        this.resp = new ThreadLocal<>();
         this.ctx.set(ctx);
     }
 
