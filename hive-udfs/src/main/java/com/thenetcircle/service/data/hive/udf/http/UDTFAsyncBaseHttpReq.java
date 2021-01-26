@@ -104,6 +104,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                                 Object[] realRes = result.get();
                                 forward(realRes);
                                 log.info("\n\n -- process() --going to forward ctx: {} status: {}", realRes[3], realRes[0]);
+                                result.remove();
                             }
                         } catch (HiveException e) {
                             e.printStackTrace();
