@@ -78,6 +78,10 @@ public class HttpHelper {
         return instance.get();
     }
 
+    public static HttpClientContext getHcContext() {
+        return hcContext;
+    }
+
     public static Map<String, String> headers2Map(Header... headers) {
         Map<String, String> re = new HashMap<>();
         if (ArrayUtils.isEmpty(headers)) {

@@ -12,7 +12,6 @@ import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
@@ -33,8 +32,6 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
     private transient LongAccumulator processCounter = new LongAccumulator((x, y) -> x + y, 0);
     private transient LongAdder forwardCounter = new LongAdder();
-
-    private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
 
     @Override
     public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
@@ -74,12 +71,13 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         int start = 0;
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
-        HttpHelper.getInstance().executeFutureReq(ctx, httpBaseReq, resultQueue);
+        // forward in time
+        executeFutureReq1(ctx, httpBaseReq);
 
         while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getCorePoolSize()) {
             log.info("\n\n -- process() -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
 
-            while (resultQueue.isEmpty()) {
+            while (forwardCounter.longValue() < 1) {
                 MiscUtils.easySleep(1000);
                 log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
             }
@@ -88,19 +86,59 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
             while (processCounter.longValue() - forwardCounter.longValue() < threadPoolExecutor.getCorePoolSize()){
                 MiscUtils.easySleep(1000);
                 log.info("\n\n -- process().easySleep -- thread pool is full! current index{}, forward: {}\n\n", ctx, forwardCounter.longValue());
-                if (!resultQueue.isEmpty() && resultQueue.size() > threadPoolExecutor.getCorePoolSize()){
-                    break;
-                }
-            }
-
-            while (!resultQueue.isEmpty()) {
-                Object[] pullResult = resultQueue.poll();
-                log.info("\n\n -- process() --going to forward ctx: {} status: {}", pullResult[3], pullResult[0]);
-                forwardCounter.increment();
-                forward(pullResult);
             }
             return;
         }
+    }
+
+    public void executeFutureReq1(Object ctx, HttpRequestBase httpRequestBase) {
+        HttpHelper.getInstance();
+        HttpHelper.getInstance().getFutureReqExecSvc().execute(
+                httpRequestBase,
+                HttpHelper.getHcContext(),
+                new RespHandler(ctx),
+                new IHttpClientCallback() {
+                    @Override
+                    public void completed(Object[] result) {
+                        try {
+                            synchronized (this) {
+                                forward(result);
+                                log.info("\n\n -- process() --going to forward ctx: {} status: {}", result[3], result[0]);
+                            }
+                        } catch (HiveException e) {
+                            e.printStackTrace();
+                        }
+                        forwardCounter.increment();
+                    }
+
+                    @Override
+                    public void failed(Exception ex) {
+                        try {
+                            synchronized (this) {
+                                forward(runtimeErr(ctx, ex.getMessage()));
+                            }
+                        } catch (HiveException e) {
+                            e.printStackTrace();
+                        }
+                        forwardCounter.increment();
+                    }
+
+                    @Override
+                    public void cancelled() {
+                        try {
+                            synchronized (this) {
+                                forward(runtimeErr(ctx, "task cancelled"));
+                            }
+                        } catch (HiveException e) {
+                            e.printStackTrace();
+                        }
+                        forwardCounter.increment();
+                    }
+                });
+    }
+
+    public static Object[] runtimeErr(Object ctx, String errMsg) {
+        return new Object[]{-1, null, errMsg,ctx};
     }
 
     /**
@@ -118,35 +156,15 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
         log.info("\n\n{} #close()", NAME);
 
-        ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
-
-        while (threadPoolExecutor.getActiveCount() > 0) {
-            while (resultQueue.isEmpty()) {
-                MiscUtils.easySleep(1000);
-                log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCounter.longValue());
-            }
-            Object[] pullResult = resultQueue.poll();
-            log.info("\n\n -- close() -- going to forward key: {} status: {}", pullResult[3], pullResult[0]);
-            forwardCounter.increment();
-            forward(pullResult);
-            log.info("\n\n -- close() -- forward size: {}, process size: {}", forwardCounter.longValue(), processCounter.get());
-        }
-
-        while (!resultQueue.isEmpty()) {
-            Object[] pullResult = resultQueue.poll();
-            log.info("\n\n -- close() -- going to forward key: {} status: {}", pullResult[3], pullResult[0]);
-            forwardCounter.increment();
-            forward(pullResult);
+        while (processCounter.longValue() > forwardCounter.longValue()) {
+            MiscUtils.easySleep(1000);
+            log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCounter.longValue());
         }
 
         log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), forwardCounter.longValue());
+        log.info("\n FutureRequestExecutionMetrics: {}", HttpHelper.getInstance().getFutureReqExecSvc().metrics().toString());
         // this closure will close executorService & httpclient
         HttpHelper.getInstance().closeFutureReqExecSvc();
     }
-
-
-
-
-
 
 }
