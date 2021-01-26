@@ -98,11 +98,12 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                 new RespHandler(ctx),
                 new IHttpClientCallback() {
                     @Override
-                    public void completed(Object[] result) {
+                    public void completed(final ThreadLocal<Object[]> result) {
                         try {
                             synchronized (this) {
-                                forward(result);
-                                log.info("\n\n -- process() --going to forward ctx: {} status: {}", result[3], result[0]);
+                                Object[] realRes = result.get();
+                                forward(realRes);
+                                log.info("\n\n -- process() --going to forward ctx: {} status: {}", realRes[3], realRes[0]);
                             }
                         } catch (HiveException e) {
                             e.printStackTrace();
@@ -111,7 +112,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                     }
 
                     @Override
-                    public void failed(Exception ex) {
+                    public void failed(final Exception ex) {
                         try {
                             synchronized (this) {
                                 forward(runtimeErr(ctx, ex.getMessage()));

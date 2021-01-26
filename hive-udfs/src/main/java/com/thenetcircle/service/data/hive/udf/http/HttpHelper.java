@@ -229,7 +229,7 @@ public class HttpHelper {
         return futureRequestExecutionService;
     }
 
-    public void executeFutureReq(Object ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
+    /*public void executeFutureReq(Object ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 hcContext,
@@ -250,7 +250,7 @@ public class HttpHelper {
                         resultQueue.offer(runtimeErr(ctx, "task cancelled"));
                     }
                 });
-    }
+    }*/
 
     public void closeHttpClient() throws IOException {
         hc = HttpHelper.getInstance().getHttpClient();

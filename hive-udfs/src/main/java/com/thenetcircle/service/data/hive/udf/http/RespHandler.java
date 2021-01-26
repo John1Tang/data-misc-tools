@@ -9,24 +9,24 @@ import java.io.IOException;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 
-final class RespHandler implements ResponseHandler<Object[]> {
+final class RespHandler implements ResponseHandler<ThreadLocal<Object[]>> {
 
-    private transient Object ctx;
+    private transient ThreadLocal<Object> ctx;
 
-    public RespHandler() {
-    }
+    private transient static ThreadLocal<Object[]> resp;
 
     public RespHandler(Object ctx) {
-        this.ctx = ctx;
+        this.ctx.set(ctx);
     }
 
     @Override
-    public Object[] handleResponse(
+    public ThreadLocal<Object[]> handleResponse(
             final HttpResponse response) throws ClientProtocolException, IOException {
-        return new Object[]{
+        resp.set(new Object[]{
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
                 EntityUtils.toString(response.getEntity()) ,
-                ctx};
+                ctx});
+        return resp;
     }
 }
