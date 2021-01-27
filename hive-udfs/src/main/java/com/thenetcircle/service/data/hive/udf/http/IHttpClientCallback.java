@@ -2,7 +2,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import org.apache.http.concurrent.FutureCallback;
 
-public interface IHttpClientCallback extends FutureCallback<ThreadLocal<Object[]>> {
+public interface IHttpClientCallback extends FutureCallback<Object[]> {
 
     @Override
     default void failed(final Exception ex) {
@@ -10,9 +10,9 @@ public interface IHttpClientCallback extends FutureCallback<ThreadLocal<Object[]
     }
 
     @Override
-    default void completed(final ThreadLocal<Object[]> result) {
+    default void completed(final Object[] result) {
         // do something
-        System.out.println(Thread.currentThread().getName() + result.get()[0]);
+        System.out.println(Thread.currentThread().getName() + result[0]);
     }
 
     @Override

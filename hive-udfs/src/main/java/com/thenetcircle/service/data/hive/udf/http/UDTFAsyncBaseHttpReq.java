@@ -91,20 +91,17 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
     }
 
     public void executeFutureReq1(Object ctx, HttpRequestBase httpRequestBase) {
-        log.info("submit url: {}, ctx: {}", httpRequestBase.getURI(), ctx);
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 HttpHelper.getHcContext(),
                 new RespHandler(ctx),
                 new IHttpClientCallback() {
                     @Override
-                    public void completed(final ThreadLocal<Object[]> result) {
+                    public void completed(final Object[] result) {
                         try {
                             synchronized (this) {
-                                Object[] realRes = result.get();
-                                forward(realRes);
-                                log.info("\n\n -- process() --going to forward ctx: {} status: {}", realRes[3], realRes[0]);
-                                result.remove();
+                                forward(result);
+                                log.info("\n\n -- process() --going to forward ctx: {} status: {}", result[3], result[0]);
                             }
                         } catch (HiveException e) {
                             e.printStackTrace();
