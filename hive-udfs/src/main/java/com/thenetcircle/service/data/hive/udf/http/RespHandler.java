@@ -15,25 +15,26 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private static Logger log = LoggerFactory.getLogger(RespHandler.class);
 
-    private Object ctx;
-
-//    private transient ThreadLocal<Object[]> resp = new ThreadLocal<>();
+    private ThreadLocal<Object> tlCtx = new ThreadLocal<>();
 
     public RespHandler(Object ctx) {
-        this.ctx = ctx;
+        Object tlVal = tlCtx.get();
+        if (tlVal == null) {
+            tlVal = ctx;
+            tlCtx.set(tlVal);
+        }
     }
-
 
 
     @Override
     public Object[] handleResponse(
             final HttpResponse response) throws ClientProtocolException, IOException {
         String resp = EntityUtils.toString(response.getEntity());
-        log.info("ctx: {}, handleResponse: {}", ctx, resp.substring(0, 84));
+        log.info("ctx: {}, handleResponse: {}", tlCtx.get(), resp.substring(0, 84));
         return new Object[]{
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
                 resp ,
-                ctx};
+                tlCtx.get()};
     }
 }
