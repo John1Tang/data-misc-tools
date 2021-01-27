@@ -29,7 +29,7 @@ final class RespHandler implements ResponseHandler<Object[]> {
     public Object[] handleResponse(
             final HttpResponse response) throws ClientProtocolException, IOException {
         String resp = EntityUtils.toString(response.getEntity());
-        log.info("ctx: {}, handleResponse: {}", ctx, resp.substring(0, 64));
+        log.info("ctx: {}, handleResponse: {}", ctx, resp.substring(0, 84));
         return new Object[]{
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
