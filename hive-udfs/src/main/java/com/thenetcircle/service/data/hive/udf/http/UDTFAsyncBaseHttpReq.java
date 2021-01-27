@@ -91,6 +91,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
     }
 
     public void executeFutureReq1(Object ctx, HttpRequestBase httpRequestBase) {
+        log.info("submit url: {}, ctx: {}", httpRequestBase.getURI(), ctx);
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 HttpHelper.getHcContext(),
