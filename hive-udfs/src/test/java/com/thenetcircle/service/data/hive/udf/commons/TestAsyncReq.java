@@ -2,16 +2,26 @@ package com.thenetcircle.service.data.hive.udf.commons;
 
 import com.thenetcircle.service.data.hive.udf.http.HttpHelper;
 import com.thenetcircle.service.data.hive.udf.http.IHttpClientCallback;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 
@@ -25,10 +35,32 @@ public class TestAsyncReq {
 
     @Test
     public void testMultiReq(){
+        
+
+
+        Object[] ctx = new Object[] {
+                "439963",
+                "440713",
+                "447882",
+                "446633",
+                "442012",
+                "446334",
+                "442636",
+                "443284",
+                "442855"
+        };
+
+        ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor("a_http_get");
+        log.info("\n--- start process --- \nwith ctx: {}\ncorePool size: {}, active: {}",
+                ctx, threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount());
+
+        int start = 0;
 
 
 
     }
+
+
 
     public void executeFutureReq1(Object ctx, HttpRequestBase httpRequestBase) {
         log.info("submit url: {}, ctx: {}", httpRequestBase.getURI(), ctx);

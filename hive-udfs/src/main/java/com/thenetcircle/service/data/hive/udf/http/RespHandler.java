@@ -35,8 +35,8 @@ final class RespHandler implements ResponseHandler<Object[]> {
             final HttpResponse response) throws ClientProtocolException, IOException {
         String resp = EntityUtils.toString(response.getEntity());
 //        log.info("ctx: {}, handleResponse: {}", tlCtx.get(), resp.substring(0, 84));
-        log.info("threadInfo: {}, ctx: {}, handleResponse: {}",
-                NetUtil.getNet().getRunInfo(), ctx, resp.substring(0, 84));
+        log.info("klassAddress: {}, threadInfo: {}, ctx: {}, handleResponse: {}",
+                System.identityHashCode(this), NetUtil.getNet().getRunInfo(), ctx, resp.substring(0, 84));
         return new Object[]{
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
