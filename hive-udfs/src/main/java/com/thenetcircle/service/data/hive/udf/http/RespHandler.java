@@ -18,7 +18,7 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
 //    private ThreadLocal<Object> tlCtx = new ThreadLocal<>();
 
-    private Object ctx;
+    private final Object ctx;
 
     public RespHandler(Object ctx) {
         /*Object tlVal = tlCtx.get();
