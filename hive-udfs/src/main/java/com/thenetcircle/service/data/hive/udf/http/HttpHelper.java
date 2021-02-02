@@ -70,6 +70,7 @@ public class HttpHelper {
     private HttpHelper(){
         hcContext = HttpClientContext.create();
         coreNum = Runtime.getRuntime().availableProcessors();
+        coreSize = coreNum;
     }
 
     private static final Supplier<HttpHelper> instance = Suppliers.memoize(HttpHelper::new);
@@ -284,7 +285,6 @@ public class HttpHelper {
 
     public void setCoreSize(ObjectInspector[] args, int idx, String udfName) throws UDFArgumentTypeException {
         if (args.length - 1 < idx) {
-            coreSize = coreNum;
             return;
         }
         checkArgPrimitive(udfName, args, idx);
