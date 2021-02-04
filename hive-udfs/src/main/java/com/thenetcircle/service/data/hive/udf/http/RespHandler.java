@@ -2,6 +2,9 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -9,6 +12,8 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
@@ -17,17 +22,20 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private static Logger log = LoggerFactory.getLogger(RespHandler.class);
 
-//    private ThreadLocal<Object> tlCtx = new ThreadLocal<>();
+    private Object ctx;
 
-    private final Object ctx;
+    private ObjectWritable ctxWritable;
 
-    public RespHandler(Object ctx) {
-        /*Object tlVal = tlCtx.get();
-        if (tlVal == null) {
-            tlVal = ctx;
-            tlCtx.set(tlVal);
-        }*/
-        this.ctx = ObjectUtils.clone(ctx);
+    public RespHandler(ObjectWritable ctx){
+
+        ctxWritable =  new ObjectWritable();
+        try {
+            ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
+            this.ctx = ObjectUtils.clone(ctxWritable.get());
+        } catch (IOException e) {
+            e.printStackTrace();
+            this.ctx = null;
+        }
         log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}, ctxCopy: {}",
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
                 System.identityHashCode(ctx), ctx.getClass(), ctx, System.identityHashCode(this.ctx));

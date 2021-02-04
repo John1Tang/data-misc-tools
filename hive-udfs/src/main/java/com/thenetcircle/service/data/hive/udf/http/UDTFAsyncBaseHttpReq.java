@@ -9,6 +9,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
@@ -80,7 +81,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         // forward in time
-        executeFutureReq1(ctx, httpBaseReq);
+        executeFutureReq1((ObjectWritable)ctx, httpBaseReq);
 
         while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getCorePoolSize()) {
             while (forwardCounter.longValue() < 1) {
@@ -97,7 +98,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         }
     }
 
-    public void executeFutureReq1(Object ctx, HttpRequestBase httpRequestBase) {
+    public void executeFutureReq1(ObjectWritable ctx, HttpRequestBase httpRequestBase) {
         log.info("submit url: {}, ctx: {}", httpRequestBase.getURI(), ctx);
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
