@@ -27,8 +27,8 @@ final class RespHandler implements ResponseHandler<Object[]> {
             tlCtx.set(tlVal);
         }*/
         this.ctx = ctx;
-        log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctx: {}",
-                System.identityHashCode(this), NetUtil.getNet().getRunInfo(), ctx);
+        log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctxType: {}, ctxVal: {}",
+                System.identityHashCode(this), NetUtil.getNet().getRunInfo(), ctx.getClass(), ctx);
     }
 
     public Object getCtx() {

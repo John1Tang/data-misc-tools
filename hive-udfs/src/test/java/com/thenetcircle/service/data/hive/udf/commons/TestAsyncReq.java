@@ -167,7 +167,7 @@ public class TestAsyncReq {
                 final HttpResponse response) throws ClientProtocolException, IOException {
             String resp = EntityUtils.toString(response.getEntity());
             System.out.println("handleResponse >> threadInfo: " + NetUtil.getNet().getRunInfo()
-                    +  ", ctx: " + ctx
+                    +  ", ctxType: " + ctx.getClass() + ", ctxVal: "+ ctx
                     + ", entity: " + resp.substring(0, 84));
             return new Object[]{
                     response.getStatusLine().getStatusCode(),
