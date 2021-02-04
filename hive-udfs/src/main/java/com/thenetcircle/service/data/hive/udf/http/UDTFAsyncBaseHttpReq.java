@@ -96,14 +96,15 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 HttpHelper.getHcContext(),
-                new RespHandler(ObjectUtils.clone(ctx)),
+                new RespHandler(ctx),
                 new IHttpClientCallback() {
                     @Override
                     public void completed(final Object[] result) {
                         try {
                             synchronized (this) {
                                 forward(result);
-                                log.info("\n\n -- process() --going to forward ctx: {} status: {}", result[3], result[0]);
+                                log.info("\n\n -- process() --going to forward nanoTime: {}, ctx: {} status: {}",
+                                        System.nanoTime(), result[3], result[0]);
                             }
                         } catch (HiveException e) {
                             e.printStackTrace();
