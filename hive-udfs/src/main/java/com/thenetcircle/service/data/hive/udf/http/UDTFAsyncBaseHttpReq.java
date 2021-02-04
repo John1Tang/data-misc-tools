@@ -2,13 +2,14 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.io.WritableComparable;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +80,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         // forward in time
-        executeFutureReq1(ObjectUtils.clone(ctx), httpBaseReq);
+        executeFutureReq1(ObjectUtils.clone(ctx.toString()), httpBaseReq);
 
         while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getCorePoolSize()) {
             while (forwardCounter.longValue() < 1) {
