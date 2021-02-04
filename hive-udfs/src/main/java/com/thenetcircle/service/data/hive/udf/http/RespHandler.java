@@ -1,9 +1,8 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.*;
+import org.apache.hadoop.io.ObjectWritable;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -12,9 +11,9 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 
@@ -24,15 +23,17 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private Object ctx;
 
-    private ObjectWritable ctxWritable;
+    private Writable ctxWritable;
 
-    public RespHandler(ObjectWritable ctx){
+    public RespHandler(Writable ctx){
 
         ctxWritable =  new ObjectWritable();
         try {
+            ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
             ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
-            this.ctx = ObjectUtils.clone(ctxWritable.get());
-        } catch (IOException e) {
+            Method getInner = ctxWritable.getClass().getMethod("get");
+            this.ctx = ctxWritable.getClass().getEnclosingMethod().invoke(getInner);
+        } catch (IOException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
             e.printStackTrace();
             this.ctx = null;
         }
