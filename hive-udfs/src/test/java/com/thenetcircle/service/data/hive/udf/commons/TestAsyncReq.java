@@ -158,7 +158,8 @@ public class TestAsyncReq {
 
         public RespHandler(Object ctx) {
             System.out.println("init >> klassAddress: " + System.identityHashCode(this)
-                    + "threadInfo: " + NetUtil.getNet().getRunInfo() + ", ctx: " + ctx);
+                    + "threadInfo: " + NetUtil.getNet().getRunInfo() + ", ctx: " + ctx
+            + ", ctxKlass: " + System.identityHashCode(ctx));
             this.ctx = ctx;
         }
 
