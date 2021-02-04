@@ -84,18 +84,12 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         // forward in time
         executeFutureReq1((Writable)ctx, httpBaseReq);
 
-        while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getCorePoolSize()) {
-            while (forwardCounter.longValue() < 1) {
-                MiscUtils.easySleep(1000);
-            }
 
-            // limit coming http request
-            while (processCounter.longValue() - forwardCounter.longValue() > threadPoolExecutor.getCorePoolSize()){
-                MiscUtils.easySleep(1000);
-            }
+        while (processCounter.longValue() > threadPoolExecutor.getCorePoolSize() &&
+                processCounter.longValue() - forwardCounter.longValue() > threadPoolExecutor.getCorePoolSize()) {
+            MiscUtils.easySleep(1000);
             log.info("\n\n -- process() -- thread pool is full! current index{}, process: {}, forward: {}\n\n",
                     ctx, processCounter.longValue(), forwardCounter.longValue());
-            return;
         }
     }
 
