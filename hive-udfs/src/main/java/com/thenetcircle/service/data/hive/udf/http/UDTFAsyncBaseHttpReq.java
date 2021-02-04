@@ -2,7 +2,6 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -14,8 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgPrimitive;
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgsSize;
@@ -33,6 +35,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
     private transient LongAccumulator processCounter = new LongAccumulator((x, y) -> x + y, 0);
     private transient LongAdder forwardCounter = new LongAdder();
+
+    private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
     public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
@@ -101,13 +105,17 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                     @Override
                     public void completed(final Object[] result) {
                         try {
-                            synchronized (this) {
+                            if (lock.writeLock().tryLock(1, TimeUnit.SECONDS)) {
                                 forward(result);
                                 log.info("\n\n -- process() --going to forward nanoTime: {}, ctx: {} status: {}",
                                         System.nanoTime(), result[3], result[0]);
+
                             }
-                        } catch (HiveException e) {
+                        } catch (HiveException | InterruptedException e) {
                             e.printStackTrace();
+                        }
+                        finally {
+                            lock.writeLock().unlock();
                         }
                         forwardCounter.increment();
                     }
@@ -115,11 +123,14 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                     @Override
                     public void failed(final Exception ex) {
                         try {
-                            synchronized (this) {
+                            if (lock.writeLock().tryLock(1, TimeUnit.SECONDS)) {
                                 forward(runtimeErr(ctx, ex.getMessage()));
                             }
-                        } catch (HiveException e) {
+                        } catch (HiveException | InterruptedException e) {
                             e.printStackTrace();
+                        }
+                        finally {
+                            lock.writeLock().unlock();
                         }
                         forwardCounter.increment();
                     }
@@ -127,11 +138,14 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                     @Override
                     public void cancelled() {
                         try {
-                            synchronized (this) {
+                            if (lock.writeLock().tryLock(1, TimeUnit.SECONDS)) {
                                 forward(runtimeErr(ctx, "task cancelled"));
                             }
-                        } catch (HiveException e) {
+                        } catch (HiveException | InterruptedException e) {
                             e.printStackTrace();
+                        }
+                        finally {
+                            lock.writeLock().unlock();
                         }
                         forwardCounter.increment();
                     }
