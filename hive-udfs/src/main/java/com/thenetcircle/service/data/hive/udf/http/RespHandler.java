@@ -1,6 +1,7 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -26,10 +27,10 @@ final class RespHandler implements ResponseHandler<Object[]> {
             tlVal = ctx;
             tlCtx.set(tlVal);
         }*/
-        this.ctx = ctx;
-        log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctxAddr:{}, ctxType: {}, ctxVal: {}",
+        this.ctx = ObjectUtils.clone(ctx);
+        log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}, ctxCopy: {}",
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
-                System.identityHashCode(ctx), ctx.getClass(), ctx);
+                System.identityHashCode(ctx), ctx.getClass(), ctx, System.identityHashCode(this.ctx));
     }
 
     public Object getCtx() {

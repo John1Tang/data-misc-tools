@@ -80,7 +80,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         // forward in time
-        executeFutureReq1(ObjectUtils.clone(ctx.toString()), httpBaseReq);
+        executeFutureReq1(ctx, httpBaseReq);
 
         while (threadPoolExecutor.getActiveCount() == threadPoolExecutor.getCorePoolSize()) {
             while (forwardCounter.longValue() < 1) {
