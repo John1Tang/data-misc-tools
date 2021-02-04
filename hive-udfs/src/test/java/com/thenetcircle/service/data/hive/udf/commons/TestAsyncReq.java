@@ -136,14 +136,16 @@ public class TestAsyncReq {
                     @Override
                     public void failed(final Exception ex) {
                             synchronized (this) {
-                                log.error("dsfds");
+                                log.error("failed");
+                                ex.printStackTrace();
+
                             }
                     }
 
                     @Override
                     public void cancelled() {
                             synchronized (this) {
-                                log.error("dsfds");
+                                log.error("cancelled");
                             }
                     }
                 });
