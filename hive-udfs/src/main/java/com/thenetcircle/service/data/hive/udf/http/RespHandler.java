@@ -27,19 +27,22 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     public RespHandler(Writable ctx){
 
+        log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
+                System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
+                System.identityHashCode(ctx), ctx.getClass(), ctx);
+
         ctxWritable =  new ObjectWritable();
         try {
             ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
             ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
-            Method getInner = ctxWritable.getClass().getMethod("get");
-            this.ctx = ctxWritable.getClass().getEnclosingMethod().invoke(getInner);
+            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
+            this.ctx = getInner.invoke(ctxWritable);
         } catch (IOException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            log.error("init >> {}", e.getMessage());
             e.printStackTrace();
             this.ctx = null;
         }
-        log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}, ctxCopy: {}",
-                System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
-                System.identityHashCode(ctx), ctx.getClass(), ctx, System.identityHashCode(this.ctx));
+        log.info("init >> ctxCopy: {}", System.identityHashCode(this.ctx));
     }
 
     public Object getCtx() {
