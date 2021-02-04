@@ -157,6 +157,8 @@ public class TestAsyncReq {
         private Object ctx;
 
         public RespHandler(Object ctx) {
+            System.out.println("init >> klassAddress: " + System.identityHashCode(this)
+                    + "threadInfo: " + NetUtil.getNet().getRunInfo() + ", ctx: " + ctx);
             this.ctx = ctx;
         }
 
@@ -164,9 +166,9 @@ public class TestAsyncReq {
         public Object[] handleResponse(
                 final HttpResponse response) throws ClientProtocolException, IOException {
             String resp = EntityUtils.toString(response.getEntity());
-            System.out.println("threadInfo: " + NetUtil.getNet().getRunInfo()
+            System.out.println("handleResponse >> threadInfo: " + NetUtil.getNet().getRunInfo()
                     +  ", ctx: " + ctx
-                    + ", handleResponse: " + resp.substring(0, 84));
+                    + ", entity: " + resp.substring(0, 84));
             return new Object[]{
                     response.getStatusLine().getStatusCode(),
                     headers2Map(response.getAllHeaders()),
