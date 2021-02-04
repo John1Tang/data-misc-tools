@@ -26,21 +26,26 @@ final class RespHandler implements ResponseHandler<Object[]> {
             tlVal = ctx;
             tlCtx.set(tlVal);
         }*/
+        log.info("RespHandler::init >> klassAddress: {}, threadInfo: {}, ctx: {}",
+                System.identityHashCode(this), NetUtil.getNet().getRunInfo(), getCtx());
         this.ctx = ctx;
     }
 
+    public Object getCtx() {
+        return ctx;
+    }
 
     @Override
     public Object[] handleResponse(
             final HttpResponse response) throws ClientProtocolException, IOException {
         String resp = EntityUtils.toString(response.getEntity());
 //        log.info("ctx: {}, handleResponse: {}", tlCtx.get(), resp.substring(0, 84));
-        log.info("klassAddress: {}, threadInfo: {}, ctx: {}, handleResponse: {}",
-                System.identityHashCode(this), NetUtil.getNet().getRunInfo(), ctx, resp.substring(0, 84));
+        log.info("handleResponse >> klassAddress: {}, threadInfo: {}, ctx: {}, handleResponse: {}",
+                System.identityHashCode(this), NetUtil.getNet().getRunInfo(), getCtx(), resp.substring(0, 84));
         return new Object[]{
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
                 resp ,
-                ctx};
+                getCtx()};
     }
 }
