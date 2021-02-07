@@ -75,8 +75,10 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         processCounter.accumulate(1);
 
         ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
-        log.info("\n--- start process --- \nwith ctx: {}\ncorePool size: {}, active: {}",
-                ctx, threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount());
+        int corePoolSize = threadPoolExecutor.getCorePoolSize();
+        int activeCnt = threadPoolExecutor.getActiveCount();
+        log.info("\n--- start process --- \nwith ctx: {}\ncorePoolSize: {}, activeCnt: {}",
+                ctx, corePoolSize, activeCnt);
 
         int start = 0;
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
@@ -85,11 +87,15 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         executeFutureReq1((Writable)ctx, httpBaseReq);
 
 
-        while (processCounter.longValue() - forwardCounter.longValue() > threadPoolExecutor.getCorePoolSize()) {
+        long processCnt = processCounter.longValue();
+        long forwardCnt = forwardCounter.longValue();
+
+        while (processCnt - forwardCnt > corePoolSize) {
             MiscUtils.easySleep(1000);
             log.info("\n\n -- #process -> #easySleep 1 sec -- thread pool is full! " +
-                            "current index: {}, process: {}, forward: {}, corePool size: {}\n\n",
-                    ctx, processCounter.longValue(), forwardCounter.longValue(), threadPoolExecutor.getCorePoolSize());
+                            "current index: {}, process: {}, forward: {}\n\n",
+                    ctx, processCnt, forwardCnt);
+            forwardCnt = forwardCounter.longValue();
         }
     }
 
