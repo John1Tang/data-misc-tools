@@ -175,9 +175,13 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
         log.info("\n\n{} #close()", NAME);
 
-        while (processCounter.longValue() > forwardCounter.longValue()) {
+        long processCnt = processCounter.longValue();
+        long forwardCnt = forwardCounter.longValue();
+
+        while (processCnt > forwardCnt) {
             MiscUtils.easySleep(1000);
             log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCounter.longValue());
+            forwardCnt = forwardCounter.longValue();
         }
 
         log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), forwardCounter.longValue());
