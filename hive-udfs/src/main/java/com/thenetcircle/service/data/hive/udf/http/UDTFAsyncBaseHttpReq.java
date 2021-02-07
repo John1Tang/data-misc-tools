@@ -40,7 +40,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
     private transient LongAccumulator processCounter = new LongAccumulator((x, y) -> x + y, 0);
     private transient LongAdder forwardCounter = new LongAdder();
 
-    private ReadWriteLock lock = new ReentrantReadWriteLock();
+    private ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     @Override
     public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
@@ -120,8 +120,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                         }
                         finally {
                             lock.writeLock().unlock();
+                            forwardCounter.increment();
                         }
-                        forwardCounter.increment();
                     }
 
                     @Override
@@ -135,8 +135,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                         }
                         finally {
                             lock.writeLock().unlock();
+                            forwardCounter.increment();
                         }
-                        forwardCounter.increment();
                     }
 
                     @Override
@@ -150,8 +150,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
                         }
                         finally {
                             lock.writeLock().unlock();
+                            forwardCounter.increment();
                         }
-                        forwardCounter.increment();
                     }
                 });
     }
