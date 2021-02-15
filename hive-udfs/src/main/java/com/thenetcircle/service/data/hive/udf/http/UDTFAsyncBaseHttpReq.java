@@ -2,26 +2,21 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
-import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableComparable;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgPrimitive;
 import static com.thenetcircle.service.data.hive.udf.UDFHelper.checkArgsSize;
@@ -40,7 +35,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
     private transient LongAccumulator processCounter = new LongAccumulator((x, y) -> x + y, 0);
     private transient LongAdder forwardCounter = new LongAdder();
 
-    private ReadWriteLock lock = new ReentrantReadWriteLock(true);
+    private transient ConcurrentLinkedQueue<Object[]> resultQueue = new ConcurrentLinkedQueue<>();
 
     @Override
     public StructObjectInspector initialize(ObjectInspector[] argInsps) throws UDFArgumentException {
@@ -84,7 +79,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         // forward in time
-        executeFutureReq1((Writable)ctx, httpBaseReq);
+        HttpHelper.getInstance().executeFutureReq((Writable)ctx, httpBaseReq, resultQueue);
 
 
         long processCnt = processCounter.longValue();
@@ -95,70 +90,10 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
             log.info("\n\n -- #process -> #easySleep 1 sec -- thread pool is full! " +
                             "current index: {}, process: {}, forward: {}\n\n",
                     ctx, processCnt, forwardCnt);
-            forwardCnt = forwardCounter.longValue();
         }
+        forwardFromQueue();
     }
 
-    public void executeFutureReq1(Writable ctx, HttpRequestBase httpRequestBase) {
-        log.info("submit url: {}, ctx: {}", httpRequestBase.getURI(), ctx);
-        HttpHelper.getInstance().getFutureReqExecSvc().execute(
-                httpRequestBase,
-                HttpHelper.getHcContext(),
-                new RespHandler(ctx),
-                new IHttpClientCallback() {
-                    @Override
-                    public void completed(final Object[] result) {
-                        try {
-                            if (lock.writeLock().tryLock(1, TimeUnit.SECONDS)) {
-                                forward(result);
-                                log.info("\n\n -- process() --going to forward nanoTime: {}, ctx: {} status: {}",
-                                        System.nanoTime(), result[3], result[0]);
-
-                            }
-                        } catch (HiveException | InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        finally {
-                            lock.writeLock().unlock();
-                            forwardCounter.increment();
-                        }
-                    }
-
-                    @Override
-                    public void failed(final Exception ex) {
-                        try {
-                            if (lock.writeLock().tryLock(1, TimeUnit.SECONDS)) {
-                                forward(runtimeErr(ctx, ex.getMessage()));
-                            }
-                        } catch (HiveException | InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        finally {
-                            lock.writeLock().unlock();
-                            forwardCounter.increment();
-                        }
-                    }
-
-                    @Override
-                    public void cancelled() {
-                        try {
-                            if (lock.writeLock().tryLock(1, TimeUnit.SECONDS)) {
-                                forward(runtimeErr(ctx, "task cancelled"));
-                            }
-                        } catch (HiveException | InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        finally {
-                            lock.writeLock().unlock();
-                            forwardCounter.increment();
-                        }
-                    }
-                });
-    }
-
-    public static Object[] runtimeErr(Object ctx, String errMsg) {
-        return new Object[]{-1, null, errMsg,ctx};
-    }
 
     /**
      * getHttpBaseReq
@@ -180,14 +115,30 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
         while (processCnt > forwardCnt) {
             MiscUtils.easySleep(1000);
-            log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCounter.longValue());
             forwardCnt = forwardCounter.longValue();
+            log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCnt);
+
+            forwardFromQueue();
         }
+
+        forwardFromQueue();
+
 
         log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), forwardCounter.longValue());
         log.info("\n FutureRequestExecutionMetrics: {}", HttpHelper.getInstance().getFutureReqExecSvc().metrics().toString());
         // this closure will close executorService & httpclient
         HttpHelper.getInstance().closeFutureReqExecSvc();
+    }
+
+    public void forwardFromQueue() throws HiveException {
+        while (!resultQueue.isEmpty()) {
+            Object[] pullResult = resultQueue.poll();
+            long forwardCnt = forwardCounter.longValue();
+            log.info("\n\n -- process() --going to forward ctx: {} status: {}, forward: {}",
+                    pullResult[3], pullResult[0], forwardCnt);
+            forwardCounter.increment();
+            forward(pullResult);
+        }
     }
 
 }

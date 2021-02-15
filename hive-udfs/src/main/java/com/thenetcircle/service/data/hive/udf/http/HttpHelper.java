@@ -15,6 +15,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableVoidObjectInspector;
+import org.apache.hadoop.io.Writable;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HeaderElementIterator;
@@ -230,7 +231,8 @@ public class HttpHelper {
         return futureRequestExecutionService;
     }
 
-    /*public void executeFutureReq(Object ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
+
+    public void executeFutureReq(Writable ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 hcContext,
@@ -251,7 +253,7 @@ public class HttpHelper {
                         resultQueue.offer(runtimeErr(ctx, "task cancelled"));
                     }
                 });
-    }*/
+    }
 
     public void closeHttpClient() throws IOException {
         hc = HttpHelper.getInstance().getHttpClient();
