@@ -30,7 +30,7 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
         try {
             ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
-            ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
+            ReflectionUtils.cloneWritableInto(this.ctx, ctx);
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
 //            this.ctx = getInner.invoke(ctxWritable);
