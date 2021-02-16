@@ -1,8 +1,7 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
-import org.apache.hadoop.io.ObjectWritable;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -23,15 +22,14 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private Object ctx;
 
-    private Writable ctxWritable;
+    private WritableComparable ctxWritable;
 
-    public RespHandler(Writable ctx){
+    public RespHandler(WritableComparable ctx){
 
         log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
                 System.identityHashCode(ctx), ctx.getClass(), ctx);
 
-        ctxWritable =  new ObjectWritable();
         try {
             ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
             ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);

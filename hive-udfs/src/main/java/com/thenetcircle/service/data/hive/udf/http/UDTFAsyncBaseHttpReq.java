@@ -8,9 +8,8 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.impl.client.FutureRequestExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +84,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         // forward in time
-        HttpHelper.getInstance().executeFutureReq((Writable)ctx, httpBaseReq, resultQueue);
+        HttpHelper.getInstance().executeFutureReq(ctx, httpBaseReq, resultQueue);
 
 
         long processCnt = processCounter.longValue();
