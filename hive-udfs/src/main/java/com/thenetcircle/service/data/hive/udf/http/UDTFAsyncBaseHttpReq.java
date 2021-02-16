@@ -63,6 +63,11 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
      */
     abstract boolean setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException;
 
+    /**
+     * Give a set of arguments for the UDTF to process.
+     * @param args – object array of arguments
+     * @throws HiveException
+     */
     @Override
     public void process(Object[] args) throws HiveException {
 
@@ -72,8 +77,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
         int corePoolSize = threadPoolExecutor.getCorePoolSize();
         int activeCnt = threadPoolExecutor.getActiveCount();
-        log.info("\n--- start process --- \nwith ctx: {}\ncorePoolSize: {}, activeCnt: {}",
-                ctx, corePoolSize, activeCnt);
+        log.info("\n--- start process --- \nwith ctxType:{}, ctx: {}\ncorePoolSize: {}, activeCnt: {}",
+                ctx.getClass(), ctx, corePoolSize, activeCnt);
 
         int start = 0;
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
