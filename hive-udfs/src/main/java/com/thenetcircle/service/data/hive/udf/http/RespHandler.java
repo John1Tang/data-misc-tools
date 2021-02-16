@@ -1,6 +1,7 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.http.HttpResponse;
@@ -22,20 +23,19 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private WritableComparable ctxWritable;
 
-    public RespHandler(WritableComparable ctx){
-
-        log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
-                System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
-                System.identityHashCode(ctx), ctx.getClass(), ctx);
+    public RespHandler(Object ctx){
 
         try {
 //            ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
 //            ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
             ctx = ReflectionUtils.newInstance(ctx.getClass(), null);
-            ReflectionUtils.cloneWritableInto(this.ctx, ctx);
+            ReflectionUtils.cloneWritableInto(this.ctx, (Writable) ctx);
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
 //            this.ctx = getInner.invoke(ctxWritable);
+            log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
+                    System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
+                    System.identityHashCode(ctx), ctx.getClass(), this.ctx);
         } catch (IOException/* | NoSuchMethodException | InvocationTargetException | IllegalAccessException*/ e) {
             log.error("init >> {}", e.getMessage());
             e.printStackTrace();

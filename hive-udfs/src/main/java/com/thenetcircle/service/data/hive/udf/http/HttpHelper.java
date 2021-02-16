@@ -237,7 +237,7 @@ public class HttpHelper {
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 hcContext,
-                new RespHandler((WritableComparable)ctx),
+                new RespHandler(ctx),
                 new IHttpClientCallback() {
                     @Override
                     public void completed(Object[] result) {
