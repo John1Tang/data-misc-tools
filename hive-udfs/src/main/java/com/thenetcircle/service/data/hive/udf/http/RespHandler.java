@@ -33,9 +33,10 @@ final class RespHandler implements ResponseHandler<Object[]> {
         try {
             ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
             ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
-            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
-            this.ctx = getInner.invoke(ctxWritable);
-        } catch (IOException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            // no need to reflect
+//            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
+//            this.ctx = getInner.invoke(ctxWritable);
+        } catch (IOException/* | NoSuchMethodException | InvocationTargetException | IllegalAccessException*/ e) {
             log.error("init >> {}", e.getMessage());
             e.printStackTrace();
             this.ctx = null;
