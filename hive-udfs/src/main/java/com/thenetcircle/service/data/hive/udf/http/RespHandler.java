@@ -29,7 +29,9 @@ final class RespHandler implements ResponseHandler<Object[]> {
                 System.identityHashCode(ctx), ctx.getClass(), ctx);
 
         try {
-            ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
+//            ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
+//            ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
+            ctx = ReflectionUtils.newInstance(ctx.getClass(), null);
             ReflectionUtils.cloneWritableInto(this.ctx, ctx);
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
