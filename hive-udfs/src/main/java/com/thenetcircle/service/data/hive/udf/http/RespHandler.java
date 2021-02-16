@@ -11,8 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 
@@ -20,7 +18,7 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private static Logger log = LoggerFactory.getLogger(RespHandler.class);
 
-    private Object ctx;
+    private WritableComparable ctx;
 
     private WritableComparable ctxWritable;
 
