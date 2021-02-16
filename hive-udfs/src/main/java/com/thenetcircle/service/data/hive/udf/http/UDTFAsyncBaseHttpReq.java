@@ -10,6 +10,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.io.Writable;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.impl.client.FutureRequestExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,13 +91,15 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         long processCnt = processCounter.longValue();
         long forwardCnt = forwardCounter.longValue();
 
-        while (processCnt - forwardCnt > corePoolSize) {
+        long completedTaskCnt = threadPoolExecutor.getCompletedTaskCount();
+        while (processCnt - completedTaskCnt > corePoolSize) {
             MiscUtils.easySleep(1000);
             log.info("\n\n -- #process -> #easySleep 1 sec -- thread pool is full! " +
-                            "current index: {}, process: {}, forward: {}\n\n",
-                    ctx, processCnt, forwardCnt);
+                            "current index: {}, process: {}, forward: {}, completedTaskCnt: {}\n\n",
+                    ctx, processCnt, forwardCnt, completedTaskCnt);
+            completedTaskCnt = threadPoolExecutor.getCompletedTaskCount();
         }
-        forwardFromQueue();
+        pollAndForward();
     }
 
 
@@ -117,16 +120,16 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
         long processCnt = processCounter.longValue();
         long forwardCnt = forwardCounter.longValue();
-
+        
         while (processCnt > forwardCnt) {
             MiscUtils.easySleep(1000);
             forwardCnt = forwardCounter.longValue();
             log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCnt);
 
-            forwardFromQueue();
+            pollAndForward();
         }
 
-        forwardFromQueue();
+        pollAndForward();
 
 
         log.info("\n\n\n close httpclient \naccepted {} records\nforwarded {} records\n\n\n", processCounter.get(), forwardCounter.longValue());
@@ -135,7 +138,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpHelper.getInstance().closeFutureReqExecSvc();
     }
 
-    public void forwardFromQueue() throws HiveException {
+    public void pollAndForward() throws HiveException {
         while (!resultQueue.isEmpty()) {
             Object[] pullResult = resultQueue.poll();
             long forwardCnt = forwardCounter.longValue();
