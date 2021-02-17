@@ -3,6 +3,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 
@@ -19,24 +21,21 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private static Logger log = LoggerFactory.getLogger(RespHandler.class);
 
-    private WritableComparable ctx;
+    private Writable ctx;
 
-    private WritableComparable ctxWritable;
+//    private Writable ctxWritable;
 
-    public RespHandler(Object ctx){
+    public RespHandler(WritableComparable ctx){
 
         try {
-//            ctxWritable = ReflectionUtils.newInstance(ctx.getClass(), null);
-//            ReflectionUtils.cloneWritableInto(this.ctxWritable, ctx);
-            ctx = ReflectionUtils.newInstance(ctx.getClass(), null);
-            ReflectionUtils.cloneWritableInto(this.ctx, (Writable) ctx);
+            this.ctx = WritableUtils.clone(ctx, null);
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
 //            this.ctx = getInner.invoke(ctxWritable);
             log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
                     System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
-                    System.identityHashCode(ctx), ctx.getClass(), this.ctx);
-        } catch (IOException/* | NoSuchMethodException | InvocationTargetException | IllegalAccessException*/ e) {
+                    System.identityHashCode(ctx), ctx.getClass(), ctx);
+        } catch (Exception e) {
             log.error("init >> {}", e.getMessage());
             e.printStackTrace();
             this.ctx = null;

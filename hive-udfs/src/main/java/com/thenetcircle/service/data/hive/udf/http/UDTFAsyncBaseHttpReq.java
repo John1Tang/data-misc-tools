@@ -71,7 +71,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
     @Override
     public void process(Object[] args) throws HiveException {
 
-        Object ctx = args[0];
+        WritableComparable ctx = (WritableComparable)args[0];
         processCounter.accumulate(1);
 
         ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
