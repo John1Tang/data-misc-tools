@@ -19,9 +19,7 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     private static Logger log = LoggerFactory.getLogger(RespHandler.class);
 
-    private Writable ctx;
-
-//    private Writable ctxWritable;
+    private Object ctx;
 
     public RespHandler(Object ctx){
 
@@ -29,11 +27,13 @@ final class RespHandler implements ResponseHandler<Object[]> {
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
                 System.identityHashCode(ctx), ctx.getClass(), ctx);
         try {
+            // copy value to avoid computing state
+            if (ctx instanceof Writable) {
+                this.ctx = WritableUtils.clone((Writable) ctx, MapredContext.get().getJobConf());
+            } else {
+                this.ctx = ctx;
+            }
 
-            this.ctx = WritableUtils.clone((Writable) ctx, MapredContext.get().getJobConf());
-            // no need to reflect
-//            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
-//            this.ctx = getInner.invoke(ctxWritable);
             log.info("init >> thisCtxAddr: {}, thisCtxType: {}, thisCtxVal: {}",
                     System.identityHashCode(this.ctx), this.ctx.getClass(), this.ctx);
 
@@ -52,13 +52,12 @@ final class RespHandler implements ResponseHandler<Object[]> {
     public Object[] handleResponse(
             final HttpResponse response) throws ClientProtocolException, IOException {
         String resp = EntityUtils.toString(response.getEntity());
-//        log.info("ctx: {}, handleResponse: {}", tlCtx.get(), resp.substring(0, 84));
         log.info("handleResponse >> klassAddress: {}, threadInfo: {}, ctx: {}, handleResponse: {}",
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(), getCtx(), resp.substring(0, 84));
         return new Object[]{
                 response.getStatusLine().getStatusCode(),
                 headers2Map(response.getAllHeaders()),
-                resp ,
+                resp,
                 getCtx()};
     }
 }

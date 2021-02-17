@@ -140,7 +140,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         while (!resultQueue.isEmpty()) {
             Object[] pullResult = resultQueue.poll();
             long forwardCnt = forwardCounter.longValue();
-            log.info("\n\n -- process() --going to forward ctx: {} status: {}, forward: {}",
+            log.info("\n\n -- pollAndForward() --going to forward ctx: {} status: {}, forward: {}",
                     pullResult[3], pullResult[0], forwardCnt);
             forwardCounter.increment();
             forward(pullResult);
