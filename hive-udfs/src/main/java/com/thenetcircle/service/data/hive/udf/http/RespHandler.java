@@ -1,6 +1,7 @@
 package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
+import org.apache.hadoop.hive.ql.exec.MapredContext;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.http.HttpResponse;
@@ -28,7 +29,8 @@ final class RespHandler implements ResponseHandler<Object[]> {
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
                 System.identityHashCode(ctx), ctx.getClass(), ctx);
         try {
-            this.ctx = WritableUtils.clone((Writable) ctx, null);
+
+            this.ctx = WritableUtils.clone((Writable) ctx, MapredContext.get().getJobConf());
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
 //            this.ctx = getInner.invoke(ctxWritable);
