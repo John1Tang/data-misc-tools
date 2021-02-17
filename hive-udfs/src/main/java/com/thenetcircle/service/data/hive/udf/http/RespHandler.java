@@ -24,20 +24,22 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
     public RespHandler(Object ctx){
 
+        log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
+                System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
+                System.identityHashCode(ctx), ctx.getClass(), ctx);
         try {
             this.ctx = WritableUtils.clone((Writable) ctx, null);
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
 //            this.ctx = getInner.invoke(ctxWritable);
-            log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
-                    System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
-                    System.identityHashCode(ctx), ctx.getClass(), ctx);
+            log.info("init >> thisCtxAddr: {}, thisCtxType: {}, thisCtxVal: {}",
+                    System.identityHashCode(this.ctx), this.ctx.getClass(), this.ctx);
+
         } catch (Exception e) {
             log.error("init >> {}", e.getMessage());
             e.printStackTrace();
             this.ctx = null;
         }
-        log.info("init >> ctxCopy: {}", System.identityHashCode(this.ctx));
     }
 
     public Object getCtx() {
