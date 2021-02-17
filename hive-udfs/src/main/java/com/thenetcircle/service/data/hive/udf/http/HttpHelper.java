@@ -233,7 +233,7 @@ public class HttpHelper {
     }
 
 
-    public void executeFutureReq(WritableComparable ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
+    public void executeFutureReq(Object ctx, HttpRequestBase httpRequestBase, ConcurrentLinkedQueue<Object[]> resultQueue) {
         HttpHelper.getInstance().getFutureReqExecSvc().execute(
                 httpRequestBase,
                 hcContext,

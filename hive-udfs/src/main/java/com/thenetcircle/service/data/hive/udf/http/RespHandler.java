@@ -2,9 +2,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableUtils;
-import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -13,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
 import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.headers2Map;
 
@@ -25,10 +22,10 @@ final class RespHandler implements ResponseHandler<Object[]> {
 
 //    private Writable ctxWritable;
 
-    public RespHandler(WritableComparable ctx){
+    public RespHandler(Object ctx){
 
         try {
-            this.ctx = WritableUtils.clone(ctx, null);
+            this.ctx = WritableUtils.clone((Writable) ctx, null);
             // no need to reflect
 //            Method getInner = ctxWritable.getClass().getDeclaredMethod("get");
 //            this.ctx = getInner.invoke(ctxWritable);
