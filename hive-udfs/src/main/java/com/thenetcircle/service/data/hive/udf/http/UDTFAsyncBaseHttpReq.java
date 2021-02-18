@@ -2,6 +2,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
+import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -122,7 +123,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         while (processCnt > forwardCnt) {
             MiscUtils.easySleep(1000);
             forwardCnt = forwardCounter.longValue();
-            log.info("\n\n -- close() -- waited 1 second but not result in queue yet! forward size: {}\n\n", forwardCnt);
+            log.info("\n\n -- close() -- waited 1 second but not result in queue yet! threadInfo: {}, processCnt:{}, forwardCnt: {}\n\n",
+                    NetUtil.getNet().getRunInfo(), processCnt, forwardCnt);
 
             pollAndForward();
         }
