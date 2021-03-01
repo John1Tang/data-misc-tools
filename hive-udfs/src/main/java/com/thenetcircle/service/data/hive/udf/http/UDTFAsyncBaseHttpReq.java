@@ -10,6 +10,7 @@ import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.impl.client.FutureRequestExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +91,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         long processCnt = processCounter.longValue();
         long forwardCnt = forwardCounter.longValue();
 
-        long completedTaskCnt = threadPoolExecutor.getCompletedTaskCount();
+        FutureRequestExecutionService futureReqExecSvc = HttpHelper.getInstance().getFutureReqExecSvc();
+        long completedTaskCnt = futureReqExecSvc.metrics().getSuccessfulConnectionCount();
         while (processCnt - completedTaskCnt > corePoolSize) {
             MiscUtils.easySleep(1000);
             log.info("\n\n -- #process -> #easySleep 1 sec -- thread pool is full! " +
