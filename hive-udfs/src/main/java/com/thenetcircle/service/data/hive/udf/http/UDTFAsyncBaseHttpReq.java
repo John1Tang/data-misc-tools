@@ -121,10 +121,9 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
         long processCnt = processCounter.longValue();
         long forwardCnt = forwardCounter.longValue();
-        
+
         while (processCnt > forwardCnt) {
-            // comment out sleep cause it is called multiple times and might lead to live lock
-//            MiscUtils.easySleep(1000);
+            MiscUtils.easySleep(1000);
             forwardCnt = forwardCounter.longValue();
             log.info("\n\n -- close() -- waited 1 second but not result in queue yet! threadInfo: {}, processCnt:{}, forwardCnt: {}\n\n",
                     NetUtil.getNet().getRunInfo(), processCnt, forwardCnt);
