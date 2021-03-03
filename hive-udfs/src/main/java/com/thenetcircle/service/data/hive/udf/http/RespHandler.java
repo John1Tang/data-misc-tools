@@ -4,6 +4,7 @@ import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.hadoop.hive.ql.exec.MapredContext;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -26,10 +27,13 @@ final class RespHandler implements ResponseHandler<Object[]> {
         log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
                 System.identityHashCode(ctx), ctx.getClass(), ctx);
+
         try {
             // copy value to avoid computing state
             if (ctx instanceof Writable) {
-                this.ctx = WritableUtils.clone((Writable) ctx, MapredContext.get().getJobConf());
+                JobConf jobConf = MapredContext.get().getJobConf();
+                log.info("init >> null check {}", jobConf.toString());
+                this.ctx = WritableUtils.clone((Writable) ctx, jobConf);
             } else {
                 this.ctx = ctx;
             }
