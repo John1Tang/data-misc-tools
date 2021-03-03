@@ -4,7 +4,6 @@ import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.hadoop.hive.ql.exec.MapredContext;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
-import org.apache.hadoop.mapred.JobConf;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -30,9 +29,7 @@ final class RespHandler implements ResponseHandler<Object[]> {
         try {
             // copy value to avoid computing state
             if (ctx instanceof Writable) {
-                JobConf jobConf = MapredContext.get().getJobConf();
-                assert jobConf!=null;
-                this.ctx = WritableUtils.clone((Writable) ctx, jobConf);
+                this.ctx = WritableUtils.clone((Writable) ctx, MapredContext.get().getJobConf());
             } else {
                 this.ctx = ctx;
             }
