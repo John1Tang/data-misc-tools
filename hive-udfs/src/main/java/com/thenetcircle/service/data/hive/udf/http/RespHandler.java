@@ -27,16 +27,16 @@ final class RespHandler implements ResponseHandler<Object[]> {
         log.info("init >> klassAddress: {}, threadInfo: {}, ctxParamAddr:{}, ctxParamType: {}, ctxParamVal: {}",
                 System.identityHashCode(this), NetUtil.getNet().getRunInfo(),
                 System.identityHashCode(ctx), ctx.getClass(), ctx);
-
+        this.ctx = ctx;
         try {
             // copy value to avoid computing state
-            if (ctx instanceof Writable) {
-                JobConf jobConf = MapredContext.get().getJobConf();
-                log.info("init >> null check {}", jobConf.toString());
-                this.ctx = WritableUtils.clone((Writable) ctx, jobConf);
-            } else {
-                this.ctx = ctx;
-            }
+//            if (ctx instanceof Writable) {
+//                JobConf jobConf = MapredContext.get().getJobConf();
+//                log.info("init >> null check {}", jobConf.toString());
+//                this.ctx = WritableUtils.clone((Writable) ctx, jobConf);
+//            } else {
+//                this.ctx = ctx;
+//            }
 
             log.info("init >> thisCtxAddr: {}, thisCtxType: {}, thisCtxVal: {}",
                     System.identityHashCode(this.ctx), this.ctx.getClass(), this.ctx);

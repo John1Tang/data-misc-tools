@@ -3,12 +3,16 @@ package com.thenetcircle.service.data.hive.udf.http;
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import com.thenetcircle.service.data.hive.udf.commons.MiscUtils;
 import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
+import org.apache.hadoop.hive.ql.exec.MapredContext;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableUtils;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.FutureRequestExecutionService;
 import org.slf4j.Logger;
@@ -28,6 +32,14 @@ import static com.thenetcircle.service.data.hive.udf.http.HttpHelper.ASYNC_RESUL
  * @author john
  */
 public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
+
+
+    protected MapredContext mapredCtx;
+
+    @Override
+    public void configure(MapredContext mapredContext) {
+        mapredCtx = mapredContext;
+    }
 
     String NAME = "a_http_base";
 
@@ -59,13 +71,24 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
     /**
      * set request body if required
+     *
      * @param argInsps
      * @throws UDFArgumentTypeException
      */
     abstract boolean setBody(ObjectInspector[] argInsps) throws UDFArgumentTypeException;
 
+    protected Object cloneCtxObj(Object ctx) {
+        if (!(ctx instanceof Writable)) {
+            return ctx;
+        }
+        JobConf jobConf = this.mapredCtx.getJobConf();
+        log.info("init >> null check {}", jobConf.toString());
+        return WritableUtils.clone((Writable) ctx, jobConf);
+    }
+
     /**
      * Give a set of arguments for the UDTF to process.
+     *
      * @param args – object array of arguments
      * @throws HiveException
      */
@@ -85,7 +108,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         HttpRequestBase httpBaseReq = getHttpBaseReq(args, start);
 
         // forward in time
-        HttpHelper.getInstance().executeFutureReq(ctx, httpBaseReq, resultQueue);
+        Object _ctx = cloneCtxObj(ctx);
+        HttpHelper.getInstance().executeFutureReq(_ctx, httpBaseReq, resultQueue);
 
 
         long processCnt = processCounter.longValue();
@@ -96,8 +120,8 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         while (processCnt - completedTaskCnt > corePoolSize) {
             MiscUtils.easySleep(1000);
             log.info("\n\n -- #process -> #easySleep 1 sec -- thread pool is full! " +
-                            "current index: {}, process: {}, forward: {}, completedTaskCnt: {}\n\n",
-                    ctx, processCnt, forwardCnt, completedTaskCnt);
+                            "current index: {}, cloned: {}, process: {}, forward: {}, completedTaskCnt: {}\n\n",
+                    ctx, _ctx, processCnt, forwardCnt, completedTaskCnt);
             completedTaskCnt = threadPoolExecutor.getCompletedTaskCount();
         }
         pollAndForward();
@@ -106,6 +130,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
 
     /**
      * getHttpBaseReq
+     *
      * @param args
      * @param start
      * @return
