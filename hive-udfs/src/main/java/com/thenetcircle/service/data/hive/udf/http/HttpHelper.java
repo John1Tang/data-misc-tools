@@ -273,10 +273,12 @@ public class HttpHelper {
     public void closeFutureReqExecSvc() throws HiveException {
         try {
             futureRequestExecutionService.close();
+            this.hc.close();
             // in case once in second execution found out closed state is true
             // and report illegal state
             futureRequestExecutionService = null;
             this.threadPoolExecutor = null;
+            this.hc = null;
         } catch (IOException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             throw new HiveException(e);
