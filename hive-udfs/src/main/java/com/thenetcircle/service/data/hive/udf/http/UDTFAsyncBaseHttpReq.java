@@ -95,7 +95,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         } catch (IOException e) {
             log.error("init >> replicate error");
             e.printStackTrace();
-            return null;
+            return ctx;
         }
     }
 
