@@ -161,7 +161,10 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         long forwardCnt = forwardCounter.longValue();
 
         long closeBegin = System.currentTimeMillis();
-        long totalTimout = processCnt * HttpHelper.getInstance().getTimeout();
+
+        ThreadPoolExecutor threadPoolExecutor = HttpHelper.getInstance().getThreadPoolExecutor(NAME);
+        int activeCount = threadPoolExecutor.getActiveCount();
+        long totalTimout = processCnt * HttpHelper.getInstance().getTimeout() / activeCount;
 
         while (processCnt > forwardCnt && (System.currentTimeMillis() - closeBegin) < totalTimout) {
             MiscUtils.easySleep(1000);
