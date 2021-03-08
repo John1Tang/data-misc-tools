@@ -13,11 +13,13 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hive.common.util.ReflectionUtil;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.FutureRequestExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.LongAccumulator;
@@ -81,9 +83,20 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
         if (!(ctx instanceof Writable)) {
             return ctx;
         }
-        JobConf jobConf = this.mapredCtx.getJobConf();
+        JobConf jobConf = this.mapredCtx == null? null: this.mapredCtx.getJobConf();
         log.info("init >> null check {}", jobConf.toString());
-        return WritableUtils.clone((Writable) ctx, jobConf);
+        Writable _src = (Writable) ctx;
+//        Writable _w = (Writable) ReflectionUtil.newInstance(_src.getClass(), jobConf);
+//        _src.readFields();
+//        _w.write();
+//        return WritableUtils.clone((Writable) ctx, jobConf);
+        try {
+            return UDFHelper.replicate(_src, jobConf);
+        } catch (IOException e) {
+            log.error("init >> replicate error");
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /**

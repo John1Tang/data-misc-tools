@@ -6,6 +6,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentLengthException;
@@ -28,10 +29,12 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hive.common.util.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.lang.reflect.*;
 import java.sql.Timestamp;
 import java.text.ParseException;
@@ -783,6 +786,19 @@ public class UDFHelper {
             default:
                 return null;
         }
+    }
+
+    public static Writable copyTo(Writable src, Writable dst) throws IOException {
+        byte[] bytes = WritableUtils.toByteArray(src);
+        DataInputBuffer dib = new DataInputBuffer();
+        dib.reset(bytes, bytes.length);
+        dst.readFields(dib);
+        return dst;
+    }
+
+    public  static Writable replicate(Writable src, Configuration conf) throws IOException {
+        Writable dst = ReflectionUtils.newInstance(src.getClass(), conf);
+        return copyTo(src, dst);
     }
 
 }

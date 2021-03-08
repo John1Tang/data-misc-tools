@@ -120,11 +120,11 @@ public class HttpHelper {
 
     public static final List<String> ASYNC_RESULT_FIELDS = Arrays.asList("code", "headers", "content");
     public static final List<ObjectInspector> ASYNC_RESULT_FIELD_INSPECTORS = Arrays.asList(
-            javaIntObjectInspector,
+            javaIntObjectInspector, //code
             getStandardMapObjectInspector(
                     javaStringObjectInspector,
-                    javaStringObjectInspector),
-            javaStringObjectInspector);
+                    javaStringObjectInspector), //headers
+            javaStringObjectInspector); //content
 
     public static final StandardStructObjectInspector ASYNC_RESULT_TYPE = ObjectInspectorFactory.getStandardStructObjectInspector(
             ASYNC_RESULT_FIELDS,
