@@ -84,7 +84,7 @@ public abstract class UDTFAsyncBaseHttpReq extends GenericUDTF {
             return ctx;
         }
         JobConf jobConf = this.mapredCtx == null? null: this.mapredCtx.getJobConf();
-        log.info("init >> null check {}", jobConf.toString());
+        log.info("init >> null check {}", jobConf);
         Writable _src = (Writable) ctx;
 //        Writable _w = (Writable) ReflectionUtil.newInstance(_src.getClass(), jobConf);
 //        _src.readFields();
