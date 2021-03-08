@@ -320,6 +320,10 @@ public class HttpHelper {
         rc = RequestConfig.custom().setSocketTimeout(timeout).setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).build();
     }
 
+    public long getTimeout() {
+        return this.timeout;
+    }
+
     public void setReqHeader(ObjectInspector[] args, int idx) throws UDFArgumentTypeException {
         if (args.length - 1 < idx) {
             return;
