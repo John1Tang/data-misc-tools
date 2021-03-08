@@ -276,6 +276,7 @@ public class HttpHelper {
             // in case once in second execution found out closed state is true
             // and report illegal state
             futureRequestExecutionService = null;
+            this.threadPoolExecutor = null;
         } catch (IOException e) {
             e.printStackTrace(SessionState.getConsole().getChildErrStream());
             throw new HiveException(e);
