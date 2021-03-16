@@ -23,4 +23,10 @@ public class TestThrowTest {
 
         System.out.println(resultInspector.getPrimitiveJavaObject(result));
     }
+
+    @Test
+    public void testDigit(){
+        char a = '1';
+        System.out.println(Integer.parseInt(String.valueOf(a)) + 1);
+    }
 }
