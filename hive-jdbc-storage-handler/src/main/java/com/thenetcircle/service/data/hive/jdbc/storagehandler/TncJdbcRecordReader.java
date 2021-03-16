@@ -48,9 +48,9 @@ public class TncJdbcRecordReader extends JdbcRecordReader {
         try {
             if (dbAccessor == null) {
                 dbAccessor = TncDatabaseAccessorFactory.getAccessor(conf);
-                setDbAccessor(dbAccessor);
+                super.setDbAccessor(dbAccessor);
                 iterator = dbAccessor.getRecordIterator(conf, split.getLimit(), split.getOffset());
-                setIterator(iterator);
+                super.setIterator(iterator);
             }
         } catch (Exception e) {
             LOGGER.error("An error occurred while reading the next record from DB.", e);

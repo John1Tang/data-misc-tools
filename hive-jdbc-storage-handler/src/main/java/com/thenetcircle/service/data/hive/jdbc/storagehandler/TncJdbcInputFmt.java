@@ -34,7 +34,7 @@ public class TncJdbcInputFmt extends JdbcInputFormat {
     public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
         if (dbAccessor == null) {
             dbAccessor = TncDatabaseAccessorFactory.getAccessor(job);
-            setDbAccessor(dbAccessor);
+            super.setDbAccessor(dbAccessor);
         }
         return super.getSplits(job, numSplits);
     }
