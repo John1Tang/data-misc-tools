@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * An iterator that allows iterating through a SQL resultset. Includes methods to clear up resources.
@@ -119,6 +120,7 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
     }
   }
 
+  @Override
   public void close() {
     super.close();
     try {
@@ -129,6 +131,16 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
     catch (Exception e) {
       LOGGER.warn("Caught exception while trying to close database objects", e);
     }
+  }
+
+  @Override
+  public boolean hasNext() {
+    return super.hasNext();
+  }
+
+  @Override
+  public void remove() {
+    super.remove();
   }
 
 }

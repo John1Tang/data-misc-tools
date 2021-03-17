@@ -61,4 +61,39 @@ public class TncJdbcRecordReader extends JdbcRecordReader {
         }
         return super.next(key, value);
     }
+
+    @Override
+    public LongWritable createKey() {
+        return super.createKey();
+    }
+
+    @Override
+    public MapWritable createValue() {
+        return super.createValue();
+    }
+
+    @Override
+    public long getPos() throws IOException {
+        return super.getPos();
+    }
+
+    @Override
+    public void close() throws IOException {
+        super.close();
+    }
+
+    @Override
+    public float getProgress() throws IOException {
+        return super.getProgress();
+    }
+
+    @Override
+    public void setDbAccessor(DatabaseAccessor dbAccessor) {
+        super.setDbAccessor(dbAccessor);
+    }
+
+    @Override
+    public void setIterator(JdbcRecordIterator iterator) {
+        super.setIterator(iterator);
+    }
 }

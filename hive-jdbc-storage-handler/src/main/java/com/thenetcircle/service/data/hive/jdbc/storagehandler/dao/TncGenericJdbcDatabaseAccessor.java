@@ -126,4 +126,43 @@ public class TncGenericJdbcDatabaseAccessor extends GenericJdbcDatabaseAccessor 
     }
   }
 
+  @Override
+  public int getTotalNumberOfRecords(Configuration conf) throws HiveJdbcDatabaseAccessException {
+    return super.getTotalNumberOfRecords(conf);
+  }
+
+  @Override
+  protected String getMetaDataQuery(Configuration conf) {
+    return super.getMetaDataQuery(conf);
+  }
+
+  @Override
+  protected String addLimitAndOffsetToQuery(String sql, int limit, int offset) {
+    return super.addLimitAndOffsetToQuery(sql, limit, offset);
+  }
+
+  @Override
+  protected String addLimitToQuery(String sql, int limit) {
+    return super.addLimitToQuery(sql, limit);
+  }
+
+  @Override
+  protected void cleanupResources(Connection conn, PreparedStatement ps, ResultSet rs) {
+    super.cleanupResources(conn, ps, rs);
+  }
+
+  @Override
+  protected Properties getConnectionPoolProperties(Configuration conf) throws Exception {
+    return super.getConnectionPoolProperties(conf);
+  }
+
+  @Override
+  protected Properties getDefaultDBCPProperties() {
+    return super.getDefaultDBCPProperties();
+  }
+
+  @Override
+  protected int getFetchSize(Configuration conf) {
+    return super.getFetchSize(conf);
+  }
 }
