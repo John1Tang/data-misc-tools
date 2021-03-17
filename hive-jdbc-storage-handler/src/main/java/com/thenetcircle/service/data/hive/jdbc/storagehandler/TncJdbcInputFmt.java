@@ -21,6 +21,7 @@ public class TncJdbcInputFmt extends JdbcInputFormat {
     public TncJdbcInputFmt() {
     }
 
+
     @Override
     public RecordReader getRecordReader(InputSplit split, JobConf job, Reporter reporter) throws IOException {
         if (!(split instanceof JdbcInputSplit)) {

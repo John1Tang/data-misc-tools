@@ -38,13 +38,14 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TncJdbcRecordIterator.class);
 
-  private Connection conn;
-  private PreparedStatement ps;
-  private ResultSet rs;
   private ArrayList<TypeInfo> columnTypes = null;
+  private ResultSet rs;
 
   public TncJdbcRecordIterator(Connection conn, PreparedStatement ps, ResultSet rs, String typeString) {
     super(conn, ps, rs, typeString);
+    if (typeString != null) {
+      this.columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(typeString);
+    }
   }
 
   @Override

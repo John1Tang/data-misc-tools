@@ -66,8 +66,6 @@ public class TncDatabaseAccessorFactory {
 
   public static DatabaseAccessor getAccessor(Configuration conf) {
     LOGGER.info("TncDatabaseAccessorFactory.getAccessor conf: {}", conf);
-    LOGGER.info("TncDatabaseAccessorFactory.getAccessor confContent: {}", conf.toString());
-    LOGGER.info("TncDatabaseAccessorFactory.getAccessor dbType: {}", JdbcStorageConfig.DATABASE_TYPE.getPropertyName());
     DatabaseType dbType = DatabaseType.valueOf(conf.get(JdbcStorageConfig.DATABASE_TYPE.getPropertyName()));
     return getAccessor(dbType);
   }

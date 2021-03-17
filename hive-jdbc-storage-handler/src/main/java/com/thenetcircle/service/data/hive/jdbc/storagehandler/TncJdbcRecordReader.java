@@ -40,6 +40,9 @@ public class TncJdbcRecordReader extends JdbcRecordReader {
 
     public TncJdbcRecordReader(JobConf conf, JdbcInputSplit split) {
         super(conf, split);
+        LOGGER.trace("Initializing JdbcRecordReader");
+        this.split = split;
+        this.conf = conf;
     }
 
 
