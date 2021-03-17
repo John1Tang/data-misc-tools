@@ -50,10 +50,11 @@ public class TncJdbcRecordReader extends JdbcRecordReader {
     public boolean next(LongWritable key, MapWritable value) throws IOException {
         try {
             if (dbAccessor == null) {
+                LOGGER.info("TncJdbcRecordReader.next check ");
                 dbAccessor = TncDatabaseAccessorFactory.getAccessor(conf);
-                super.setDbAccessor(dbAccessor);
+                setDbAccessor(dbAccessor);
                 iterator = dbAccessor.getRecordIterator(conf, split.getLimit(), split.getOffset());
-                super.setIterator(iterator);
+                setIterator(iterator);
             }
         } catch (Exception e) {
             LOGGER.error("An error occurred while reading the next record from DB.", e);

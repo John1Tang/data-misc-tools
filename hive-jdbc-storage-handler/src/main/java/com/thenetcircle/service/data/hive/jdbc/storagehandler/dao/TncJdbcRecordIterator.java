@@ -57,6 +57,7 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
   @Override
   public Map<String, Object> next() {
     try {
+      LOGGER.info("TncJdbcRecordIterator.next start...");
       ResultSetMetaData metadata = rs.getMetaData();
       int numColumns = metadata.getColumnCount();
       Map<String, Object> record = new HashMap<String, Object>(numColumns);
@@ -111,7 +112,8 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
         }
         record.put(key, value);
       }
-
+      LOGGER.info("TncJdbcRecordIterator.next end...");
+      LOGGER.info("TncJdbcRecordIterator.next data: {}", record);
       return record;
     }
     catch (Exception e) {

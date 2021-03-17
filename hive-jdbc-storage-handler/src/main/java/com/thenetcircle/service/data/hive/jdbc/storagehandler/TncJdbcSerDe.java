@@ -147,6 +147,10 @@ public class TncJdbcSerDe extends AbstractSerDe {
         for (int i = 0; i < numColumns; i++) {
             columnKey.set(columnNames.get(i));
             Writable value = input.get(columnKey);
+            if (null == value) {
+                row.add(null);
+                continue;
+            }
             row.add(value instanceof NullWritable ? null : ((ObjectWritable) value).get());
         }
 

@@ -96,6 +96,7 @@ public class TncGenericJdbcDatabaseAccessor extends GenericJdbcDatabaseAccessor 
     ResultSet rs = null;
 
     try {
+      LOGGER.info("getRecordIterator start...");
       initializeDatabaseConnection(conf);
       String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
       String limitQuery = addLimitAndOffsetToQuery(sql, limit, offset);
