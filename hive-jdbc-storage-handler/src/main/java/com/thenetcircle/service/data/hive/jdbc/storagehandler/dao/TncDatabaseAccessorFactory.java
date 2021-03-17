@@ -18,11 +18,15 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hive.storage.jdbc.conf.DatabaseType;
 import org.apache.hive.storage.jdbc.conf.JdbcStorageConfig;
 import org.apache.hive.storage.jdbc.dao.DatabaseAccessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Factory for creating the correct DatabaseAccessor class for the job
  */
 public class TncDatabaseAccessorFactory {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TncDatabaseAccessorFactory.class);
 
   private TncDatabaseAccessorFactory() {
   }
@@ -61,6 +65,9 @@ public class TncDatabaseAccessorFactory {
 
 
   public static DatabaseAccessor getAccessor(Configuration conf) {
+    LOGGER.info("TncDatabaseAccessorFactory.getAccessor conf: {}", conf);
+    LOGGER.info("TncDatabaseAccessorFactory.getAccessor confContent: {}", conf.toString());
+    LOGGER.info("TncDatabaseAccessorFactory.getAccessor dbType: {}", JdbcStorageConfig.DATABASE_TYPE.getPropertyName());
     DatabaseType dbType = DatabaseType.valueOf(conf.get(JdbcStorageConfig.DATABASE_TYPE.getPropertyName()));
     return getAccessor(dbType);
   }
