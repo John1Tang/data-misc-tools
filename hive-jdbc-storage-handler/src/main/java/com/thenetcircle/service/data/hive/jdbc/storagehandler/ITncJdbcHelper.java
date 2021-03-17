@@ -131,7 +131,8 @@ public interface ITncJdbcHelper {
                 jci.index = index;
                 jci.type = md.getColumnType(index);
                 jci.length = md.getScale(index);
-                jci.name = md.getColumnName(index);
+                // use what SQL AS clause shows
+                jci.name = md.getColumnLabel(index);
                 jci.isNullable = md.isNullable(index) == ResultSetMetaData.columnNoNulls;
                 jci.isAutoIncrement = md.isAutoIncrement(index);
 
