@@ -38,11 +38,16 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TncJdbcRecordIterator.class);
 
-  private ArrayList<TypeInfo> columnTypes = null;
+  private Connection conn;
+  private PreparedStatement ps;
   private ResultSet rs;
+  private ArrayList<TypeInfo> columnTypes = null;
 
   public TncJdbcRecordIterator(Connection conn, PreparedStatement ps, ResultSet rs, String typeString) {
     super(conn, ps, rs, typeString);
+    this.conn = conn;
+    this.ps = ps;
+    this.rs = rs;
     if (typeString != null) {
       this.columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(typeString);
     }
@@ -111,6 +116,18 @@ public class TncJdbcRecordIterator extends JdbcRecordIterator {
     catch (Exception e) {
       LOGGER.warn("next() threw exception", e);
       return null;
+    }
+  }
+
+  public void close() {
+    super.close();
+    try {
+      rs.close();
+      ps.close();
+      conn.close();
+    }
+    catch (Exception e) {
+      LOGGER.warn("Caught exception while trying to close database objects", e);
     }
   }
 

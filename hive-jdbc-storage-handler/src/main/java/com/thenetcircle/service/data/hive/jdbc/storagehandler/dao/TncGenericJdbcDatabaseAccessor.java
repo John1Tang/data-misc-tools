@@ -115,4 +115,15 @@ public class TncGenericJdbcDatabaseAccessor extends GenericJdbcDatabaseAccessor 
     }
   }
 
+  protected void initializeDatabaseConnection(Configuration conf) throws Exception {
+    if (dbcpDataSource == null) {
+      synchronized (this) {
+        if (dbcpDataSource == null) {
+          Properties props = getConnectionPoolProperties(conf);
+          dbcpDataSource = BasicDataSourceFactory.createDataSource(props);
+        }
+      }
+    }
+  }
+
 }
