@@ -115,7 +115,9 @@ public class TncGenericJdbcDatabaseAccessor extends GenericJdbcDatabaseAccessor 
     }
   }
 
+  @Override
   protected void initializeDatabaseConnection(Configuration conf) throws Exception {
+    super.initializeDatabaseConnection(conf);
     if (dbcpDataSource == null) {
       synchronized (this) {
         if (dbcpDataSource == null) {
