@@ -28,4 +28,15 @@ public class NetUtil {
             return "";
         }
     }
+    public String getSnakeRunInfoToProc(){
+        try {
+            String host = InetAddress.getLocalHost().getHostAddress();
+            String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+
+            return host + "_" + pid;
+        } catch (UnknownHostException e) {
+            return "";
+        }
+    }
+
 }

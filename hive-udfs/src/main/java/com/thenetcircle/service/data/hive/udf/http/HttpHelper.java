@@ -3,6 +3,7 @@ package com.thenetcircle.service.data.hive.udf.http;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.thenetcircle.service.data.hive.udf.commons.NamedThreadFactory;
+import com.thenetcircle.service.data.hive.udf.commons.NetUtil;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -15,8 +16,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableVoidObjectInspector;
-import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableComparable;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HeaderElementIterator;
@@ -214,7 +213,10 @@ public class HttpHelper {
             synchronized (this) {
                 if (null == threadPoolExecutor) {
                     threadPoolExecutor = new ThreadPoolExecutor(coreSize * 2, coreSize * 20, 8, TimeUnit.SECONDS,
-                            new LinkedBlockingDeque<>(1000), new NamedThreadFactory(name), new ThreadPoolExecutor.CallerRunsPolicy());
+                            new LinkedBlockingDeque<>(1000),
+                            // differ ThreadPools from separate processes
+                            new NamedThreadFactory(name + "_" + NetUtil.getNet().getSnakeRunInfoToProc()),
+                            new ThreadPoolExecutor.CallerRunsPolicy());
                 }
             }
         }
