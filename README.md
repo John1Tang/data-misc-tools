@@ -83,7 +83,7 @@ Hive has 3 different types of UDF
 2. timeout is always int, default by 3000
 3. headers is a map<string, string>
 4. content is string
- 
+
 |type|name|parameters|return|
 | --- | --- | --- | --- |
 |udf|http_get|_FUNC_(url, timeout, headers) - send get request to url with headers in timeout|http code, headers, content|
@@ -217,5 +217,22 @@ select ev,
 cast(unix_timestamp(substr(get_json_object(ev, '$.timestamp'), 0, 19), "yyyy-MM-dd'T'HH:mm:ss") * 1000 as timestamp)  as time_stamp,
 get_json_object(ev, '$.type') as type
 from temp_sp_events;
+```
+
+
+
+### Deployment
+
+```bash
+# i.e. deploy
+ssh tncdata@ch11
+cd source/data-misc-tools/
+mvn clean package -DskipTests
+cd hive-udfs/target/
+
+#upload to hdfs and download to reload local dir
+hdfs dfs -put -f hive-udfs-1.0.0.jar /libs/hive_udf/
+cd /data/tncdata/fan/hive/
+hdfs dfs -copyToLocal -f /libs/hive_udf/hive-udfs-1.0.0.jar 
 ```
 
