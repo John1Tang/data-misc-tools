@@ -64,7 +64,7 @@ public class UDFJsonStrRemoveKeys extends GenericUDF {
                 ((ObjectNode) tree).remove(k.toString());
             }
             return tree.toString();
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error(String.format("jsonStr: %s\nERROR msg: %s", jsonStr, e.getMessage()), e);
         }
 
@@ -73,6 +73,6 @@ public class UDFJsonStrRemoveKeys extends GenericUDF {
 
     @Override
     public String getDisplayString(String[] children) {
-        return String.format("json_rm_keys(%s, %s)", StringUtils.join(children, ", "));
+        return String.format("json_rm_keys(%s)", StringUtils.join(children, ", "));
     }
 }
