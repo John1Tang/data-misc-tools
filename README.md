@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/github/license/cfcodefans/data-misc-tools.svg)](LICENSE)
 
-..This project hosts several tools to help with development using Hive, Spark
+This project hosts several tools to help with development using Hive, Spark
 
 To study and apply how to leverage new features of Hive, Spark, Hadoop
 for data process, I created and am developing some functions for Hive and spark.
