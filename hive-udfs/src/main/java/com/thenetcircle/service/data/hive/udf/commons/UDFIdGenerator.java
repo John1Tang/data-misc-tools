@@ -8,14 +8,14 @@ import org.apache.hadoop.hive.ql.udf.UDFType;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
-import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 
 @UDFType()
-@Description(name = "id_generator", value = "_FUNC_() - returns Long. Generates a global unique Id")
+@Description(name = "id_generator", value = "_FUNC_() - returns String. Generates a global unique Id")
 public class UDFIdGenerator extends GenericUDF {
 
     public static final String NAME = "id_generator";
-    protected transient final LongWritable idVal = new LongWritable();
+    protected transient final Text idVal = new Text();
 
     @Override
     public ObjectInspector initialize(ObjectInspector[] arguments) throws UDFArgumentException {
@@ -28,7 +28,7 @@ public class UDFIdGenerator extends GenericUDF {
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
-        idVal.set(IdGenerator.nextId());
+        idVal.set(IdGenerator.generate());
         return idVal;
     }
 
