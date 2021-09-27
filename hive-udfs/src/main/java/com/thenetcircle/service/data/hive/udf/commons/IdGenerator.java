@@ -34,15 +34,15 @@ public final class IdGenerator {
 
     }
 
-    public static String generate() {
+    public static synchronized String generate() {
         return generate(IDTypeEnum.DEFAULT);
     }
 
-    public static String generate(IDTypeEnum idType) {
+    public static synchronized String generate(IDTypeEnum idType) {
         return generate(idType.getCode());
     }
 
-    public static String generate(int idType) {
+    public static synchronized String generate(int idType) {
         byte[] barr = new byte[48];
 
         // 5 for type
@@ -63,7 +63,7 @@ public final class IdGenerator {
         return bitMaptoString(barr);
     }
 
-    public static IDTypeEnum getIDType(String id) {
+    public static synchronized IDTypeEnum getIDType(String id) {
         if (id == null || id.length() != 8) {
             return null;
         }
@@ -75,7 +75,7 @@ public final class IdGenerator {
         }
     }
 
-    private static String bitMaptoString(byte[] bitmap) {
+    private static synchronized String bitMaptoString(byte[] bitmap) {
         assert bitmap.length % 6 == 0;
         int len = bitmap.length / 6;
         StringBuilder sb = new StringBuilder();
@@ -92,7 +92,7 @@ public final class IdGenerator {
         return sb.toString();
     }
 
-    private static void int2bytes(int val, byte[] arr, int st, int ed) {
+    private static synchronized void int2bytes(int val, byte[] arr, int st, int ed) {
         int len = ed - st;
         int value = val;
         for (int i = 1; i <= len; i++) {
@@ -101,7 +101,7 @@ public final class IdGenerator {
         }
     }
 
-    public static long toLongId(String id) {
+    public static synchronized long toLongId(String id) {
         if (id != null && id.length() == 8) {
             byte[] bytes = id.getBytes();
             if (bytes.length == 8) {
@@ -118,7 +118,7 @@ public final class IdGenerator {
         return 0;
     }
 
-    public static String fromLong(long id) {
+    public static synchronized String fromLong(long id) {
         return String.valueOf((char) (id >> 56 & 0xff)) +
                 (char) (id >> 48 & 0xff) +
                 (char) (id >> 40 & 0xff) +
