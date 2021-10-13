@@ -11,7 +11,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 
-@UDFType(deterministic = false, stateful = true)
+@UDFType(deterministic = false)
 @Description(name = "id_str_generator", value = "_FUNC_() - returns string. Generates a global unique Id")
 public class UDFIdStrGenerator extends GenericUDF {
 
