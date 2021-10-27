@@ -17,6 +17,8 @@ public class UDFIdStrGenerator extends GenericUDF {
 
     public static final String NAME = "id_generator";
 
+    private static final Text result = new Text();
+
     @Override
     public ObjectInspector initialize(ObjectInspector[] arguments) throws UDFArgumentException {
         if (arguments.length > 0) {
@@ -28,7 +30,8 @@ public class UDFIdStrGenerator extends GenericUDF {
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
-        return new Text(IdGenerator.generate());
+        result.set(IdGenerator.generate());
+        return result;
     }
 
     @Override
