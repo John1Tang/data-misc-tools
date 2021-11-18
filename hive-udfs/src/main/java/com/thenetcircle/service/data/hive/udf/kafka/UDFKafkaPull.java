@@ -3,6 +3,7 @@ package com.thenetcircle.service.data.hive.udf.kafka;
 import com.thenetcircle.service.data.hive.udf.UDFHelper;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hive.common.type.Timestamp;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
@@ -18,7 +19,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,14 +94,14 @@ public class UDFKafkaPull extends GenericUDF {
         Converter dateConverter = getConverter(
             startDateStrInsp,
             javaTimestampObjectInspector);
+        Timestamp start = (Timestamp) dateConverter.convert(args[1].get());
 
-        Timestamp start = (Timestamp) dateConverter.convert(args[1].get());// UDFHelper.getDate("kf_pull", args[1], PrimitiveObjectInspector.PrimitiveCategory.TIMESTAMP, dateConverter);
         dateConverter = getConverter(
             endDateStrInsp,
             javaTimestampObjectInspector);
-        Timestamp end = (Timestamp) dateConverter.convert(args[2].get()); //UDFHelper.getDate("kf_pull", args[2], PrimitiveObjectInspector.PrimitiveCategory.TIMESTAMP, dateConverter);
+        Timestamp end = (Timestamp) dateConverter.convert(args[2].get());
 
-        if (start == null || end == null || start.equals(end) || start.after(end)) {
+        if (start == null || end == null || start.equals(end) || start.compareTo(end) > 0) {
             System.out.printf("start: %s and end: %s are erroneous\n", start, end);
             return new Object[0];
         }
@@ -127,8 +127,8 @@ public class UDFKafkaPull extends GenericUDF {
 
         List<ConsumerRecord<String, String>> recList = KafkaHelper.poll(cfgs,
             1000,
-            start.getTime(),
-            end.getTime(),
+            start.toEpochMilli(),
+            end.toEpochMilli(),
             argTopics);
         return recList.stream().map(KafkaHelper::kfRecord2HiveStruct).toArray(Object[]::new);
     }
