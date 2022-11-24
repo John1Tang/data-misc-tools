@@ -232,7 +232,6 @@ cd hive-udfs/target/
 
 #upload to hdfs and download to reload local dir
 hdfs dfs -put -f hive-udfs-1.0.0.jar /libs/hive_udf/
-cd /data/tncdata/fan/hive/
-hdfs dfs -copyToLocal -f /libs/hive_udf/hive-udfs-1.0.0.jar 
+
 ```
 
