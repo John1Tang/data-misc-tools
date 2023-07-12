@@ -30,7 +30,7 @@ public class UDFIdStrGenerator extends GenericUDF {
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
-        result.set(IdGenerator.generate());
+        result.set(String.valueOf(Snowflake.nextId()));
         return result;
     }
 

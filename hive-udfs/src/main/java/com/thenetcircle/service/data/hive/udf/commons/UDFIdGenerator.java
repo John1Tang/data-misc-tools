@@ -27,7 +27,7 @@ public class UDFIdGenerator extends GenericUDF {
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
-        long id = IdGenerator.toLongId(IdGenerator.generate());
+        long id = Snowflake.nextId();
         return new LongWritable(id);
     }
 
