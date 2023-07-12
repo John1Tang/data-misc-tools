@@ -2,8 +2,7 @@ package com.thenetcircle.service.data.hive.udf.commons;
 
 
 
-import org.apache.commons.lang.math.RandomUtils;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class IdGenerator {
@@ -57,7 +56,7 @@ public final class IdGenerator {
         int2bytes(auto, barr, 35, 41);
 
         // 7 for random
-        int rand = RandomUtils.nextInt(new Random(), 128);
+        int rand = new SecureRandom().nextInt(128);
         int2bytes(rand, barr, 41, 48);
 
         return bitMaptoString(barr);
